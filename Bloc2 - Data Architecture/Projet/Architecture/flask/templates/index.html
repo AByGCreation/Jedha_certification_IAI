@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certification Jedha Bloc 2 - Stripe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background: #f8f9fa; }
+        .fraud-score-high { color: #dc3545; font-weight: bold; }
+        .fraud-score-medium { color: #ffc107; font-weight: bold; }
+        .fraud-score-low { color: #28a745; font-weight: bold; }
+        .card { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .transaction-card { transition: all 0.3s; }
+        .transaction-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class=""></i> Certification Jedha Bloc 2 - Stripe
+            </span>
+            <button class="btn btn-outline-light btn-sm" onclick="refreshStatus()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Status Cards -->
+        <div class="row mb-4" id="statusCards">
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Services Status</h6>
+                        <h3 id="servicesStatus"><span class="spinner-border spinner-border-sm"></span></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Total Transactions</h6>
+                        <h3 id="totalTransactions">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Fraud Detected</h6>
+                        <h3 id="fraudCount" class="text-danger">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Fraud Rate</h6>
+                        <h3 id="fraudRate">-</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Transaction Simulation Form -->
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-credit-card"></i> Simulate Transaction</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="transactionForm">
+                            <div class="mb-3">
+                                <label class="form-label">User</label>
+                                <select class="form-select" id="userId" required>
+                                    <option value="user_001">Alice Martin (FR)</option>
+                                    <option value="user_002">Bob Smith (US)</option>
+                                    <option value="user_003">Claire Dubois (FR)</option>
+                                    <option value="user_004">David Johnson (GB)</option>
+                                    <option value="user_005">Emma Garcia (ES)</option>
+                                    <option value="user_006">Frank Mueller (DE)</option>
+                                    <option value="user_007">Grace Lee (CN)</option>
+                                    <option value="user_008">Henry Wilson (AU)</option>
+                                    <option value="user_009">Iris Bernard (FR)</option>
+                                    <option value="user_010">Jack Taylor (CA)</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Merchant</label>
+                                <select class="form-select" id="merchantId" required>
+                                    <option value="merchant_001">Amazon EU</option>
+                                    <option value="merchant_002">Booking.com</option>
+                                    <option value="merchant_003">Spotify Premium</option>
+                                    <option value="merchant_004">Uber Technologies</option>
+                                    <option value="merchant_005">Steam Gaming</option>
+                                    <option value="merchant_006">Netflix Streaming</option>
+                                    <option value="merchant_007">PayPal Holdings</option>
+                                    <option value="merchant_008">Airbnb Stays</option>
+                                    <option value="merchant_009">Apple Store</option>
+                                    <option value="merchant_010">Nike.com</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Amount (€)</label>
+                                <input type="number" class="form-control" id="amount" step="0.01" min="0.01" value="99.99" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Currency</label>
+                                <select class="form-select" id="currency">
+                                    <option value="EUR" selected>EUR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="CAD">CAD</option>
+                                    <option value="AUD">AUD</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Payment Method</label>
+                                <select class="form-select" id="paymentMethod">
+                                    <option value="card">Card</option>
+                                    <option value="paypal">PayPal</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Card Last 4</label>
+                                <input type="text" class="form-control" id="cardLast4" maxlength="4" value="1234">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">IP Address</label>
+                                <input type="text" class="form-control" id="ipAddress" value="82.65.123.45">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Device Type</label>
+                                <select class="form-select" id="deviceType">
+                                    <option value="mobile">Mobile</option>
+                                    <option value="desktop">Desktop</option>
+                                    <option value="tablet">Tablet</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-play-circle"></i> Process Transaction
+                            </button>
+
+                            <button type="button" class="btn btn-warning w-100 mt-2" onclick="simulateFraud()">
+                                <i class="bi bi-exclamation-triangle"></i> Simulate Fraud
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results & Transaction History -->
+            <div class="col-md-8 mb-4">
+                <!-- Result Card -->
+                <div class="card mb-4" id="resultCard" style="display:none;">
+                    <div class="card-header" id="resultHeader">
+                        <h5 class="mb-0">Transaction Result</h5>
+                    </div>
+                    <div class="card-body" id="resultBody">
+                        <!-- Result will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Transaction History -->
+                <div class="card">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Transactions</h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-light" onclick="loadTransactions('all')">All</button>
+                            <button type="button" class="btn btn-outline-light" onclick="loadTransactions('fraud')">Fraud</button>
+                            <button type="button" class="btn btn-outline-light" onclick="loadTransactions('normal')">Normal</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="transactionsList">
+                            <div class="text-center">
+                                <span class="spinner-border spinner-border-sm"></span> Loading transactions...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Load transactions on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTransactions('all');
+            refreshStatus();
+        });
+
+        // Handle form submission
+        document.getElementById('transactionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                user_id: document.getElementById('userId').value,
+                merchant_id: document.getElementById('merchantId').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                currency: document.getElementById('currency').value,
+                payment_method: document.getElementById('paymentMethod').value,
+                card_last4: document.getElementById('cardLast4').value,
+                ip_address: document.getElementById('ipAddress').value,
+                device_type: document.getElementById('deviceType').value
+            };
+
+            try {
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                displayResult(result);
+                loadTransactions('all');
+                refreshStatus();
+            } catch (error) {
+                alert('Error processing transaction: ' + error.message);
+            }
+        });
+
+        function displayResult(result) {
+            const resultCard = document.getElementById('resultCard');
+            const resultHeader = document.getElementById('resultHeader');
+            const resultBody = document.getElementById('resultBody');
+
+            const fraudClass = result.fraud_score >= 70 ? 'danger' : result.fraud_score >= 40 ? 'warning' : 'success';
+            const fraudIcon = result.is_fraud ? 'bi-shield-x' : 'bi-shield-check';
+
+            resultHeader.className = `card-header bg-${fraudClass} text-white`;
+            resultHeader.innerHTML = `<h5 class="mb-0"><i class="bi ${fraudIcon}"></i> Transaction Result</h5>`;
+
+            resultBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Transaction ID:</strong> <code>${result.transaction_id}</code></p>
+                        <p><strong>Status:</strong> <span class="badge bg-${fraudClass}">${result.status}</span></p>
+                        <p><strong>Message:</strong> ${result.message}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Fraud Score:</strong> <span class="fraud-score-${fraudClass}">${result.fraud_score}/100</span></p>
+                        <p><strong>ML Probability:</strong> ${(result.ml_probability * 100).toFixed(2)}%</p>
+                        <p><strong>Is Fraud:</strong> ${result.is_fraud ? '<span class="badge bg-danger">YES</span>' : '<span class="badge bg-success">NO</span>'}</p>
+                    </div>
+                </div>
+            `;
+
+            resultCard.style.display = 'block';
+        }
+
+        async function loadTransactions(filter) {
+            const listDiv = document.getElementById('transactionsList');
+            listDiv.innerHTML = '<div class="text-center"><span class="spinner-border spinner-border-sm"></span> Loading...</div>';
+
+            try {
+                let url = '/api/transactions?limit=10';
+                if (filter === 'fraud') url += '&is_fraud=true';
+                else if (filter === 'normal') url += '&is_fraud=false';
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.transactions && data.transactions.length > 0) {
+                    listDiv.innerHTML = data.transactions.map(tx => `
+                        <div class="transaction-card card mb-2">
+                            <div class="card-body p-2">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">${new Date(tx.created_at).toLocaleString()}</small><br>
+                                        <code>${tx.transaction_id}</code>
+                                    </div>
+                                    <div class="col-md-2">
+                                        ${tx.amount} ${tx.currency}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <span class="badge bg-${tx.status === 'succeeded' ? 'success' : tx.status === 'pending' ? 'warning' : 'danger'}">
+                                            ${tx.status}
+                                        </span>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong class="${tx.fraud_score >= 70 ? 'text-danger' : tx.fraud_score >= 40 ? 'text-warning' : 'text-success'}">
+                                            ${tx.fraud_score}/100
+                                        </strong>
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                        ${tx.is_fraud ? '<span class="badge bg-danger"><i class="bi bi-shield-x"></i> FRAUD</span>' : '<span class="badge bg-success"><i class="bi bi-shield-check"></i> OK</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listDiv.innerHTML = '<p class="text-center text-muted">No transactions found</p>';
+                }
+            } catch (error) {
+                listDiv.innerHTML = `<div class="alert alert-danger">Error loading transactions: ${error.message}</div>`;
+            }
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+
+                document.getElementById('servicesStatus').innerHTML = 
+                    status.postgres && status.postgres.status === 'connected' ? 
+                    '<i class="bi bi-check-circle-fill text-success"></i> OK' : 
+                    '<i class="bi bi-x-circle-fill text-danger"></i> Error';
+
+                document.getElementById('totalTransactions').textContent = 
+                    status.postgres?.transactions_count || '-';
+
+                // Load fraud stats from transactions
+                const txResponse = await fetch('/api/transactions?is_fraud=true&limit=100');
+                const txData = await txResponse.json();
+                const fraudCount = txData.count || 0;
+
+                document.getElementById('fraudCount').textContent = fraudCount;
+                
+                const txAllResponse = await fetch('/api/transactions?limit=100');
+                const txAllData = await txAllResponse.json();
+                const totalCount = txAllData.count || 0;
+                
+                const fraudRate = totalCount > 0 ? ((fraudCount / totalCount) * 100).toFixed(2) : '0.00';
+                document.getElementById('fraudRate').innerHTML = `${fraudRate}%`;
+
+            } catch (error) {
+                console.error('Error refreshing status:', error);
+            }
+        }
+
+        function simulateFraud() {
+            // Fill form with suspicious values
+            document.getElementById('amount').value = '2999.99';
+            document.getElementById('ipAddress').value = '185.220.102.8';
+            document.getElementById('cardLast4').value = '9999';
+            
+            alert('Form filled with suspicious values. Click "Process Transaction" to simulate fraud detection.');
+        }
+
+        // Refresh status every 30 seconds
+        setInterval(refreshStatus, 30000);
+    </script>
+</body>
+</html>

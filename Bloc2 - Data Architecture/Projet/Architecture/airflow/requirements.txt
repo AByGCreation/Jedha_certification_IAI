@@ -1,0 +1,7 @@
+# Airflow dependencies for DAGs
+apache-airflow==2.8.0
+apache-airflow-providers-postgres==5.10.0
+psycopg2-binary==2.9.9
+clickhouse-driver==0.2.6
+pymongo==4.6.0
+redis==5.0.1

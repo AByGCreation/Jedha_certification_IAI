@@ -1,0 +1,21 @@
+{
+  "dashboard": {
+    "title": "Stripe Fraud Detection",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Transaction Volume",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Fraud Rate",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+      }
+    ],
+    "schemaVersion": 16,
+    "version": 0
+  }
+}
