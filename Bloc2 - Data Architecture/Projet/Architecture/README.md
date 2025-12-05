@@ -626,12 +626,7 @@ Usage pédagogique et démonstration uniquement.
 ## 🙏 **REMERCIEMENTS**
 
 - **Jedha Bootcamp** pour la formation Lead Data Science
-- **Anthropic Claude** pour l'assistance technique
 - **Communauté Open Source** pour les outils utilisés
-
----
-
-**🚀 Bonne démonstration et bon courage pour la certification !**
 
 ---
 

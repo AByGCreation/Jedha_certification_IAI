@@ -179,5 +179,76 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+#datasets
+datasets/
+datasSources/
+outputDatasets/
+inputDatasets/
+
+#ressources
+ressources/
+
+#macOS
 .DS_Store
+
+
+# Data Architecture Project Specific
+# Credentials and secrets
+*.pem
+*.key
+credentials.json
+*.credentials
+.secrets/
 secret.sh
+secret*.sh
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# MLflow
+mlruns/
+mlartifacts/
+*.mlflow
+
+# Airflow
+airflow.db
+airflow.cfg
+airflow-webserver.pid
+logs/
+standalone_admin_password.txt
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Data files
+*.csv
+*.parquet
+*.json
+*.xlsx
+*.xls
+!**/config.json
+!**/package.json
+
+# Jupyter Notebook outputs
+*.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
