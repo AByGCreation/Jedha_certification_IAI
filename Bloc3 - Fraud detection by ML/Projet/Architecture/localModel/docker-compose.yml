@@ -1,0 +1,140 @@
+version: '3.8'
+
+services:
+  # MLFlow Tracking Server
+  mlflow:
+    build:
+      context: ./serveurmlflow
+      dockerfile: Dockerfile
+    container_name: mlflow_server
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - BACKEND_STORE_URI=${BACKEND_STORE_URI}
+      - ARTIFACT_ROOT=${ARTIFACT_STORE_URI}
+    env_file:
+      - .env
+    volumes:
+      - ./serveurmlflow:/home/app
+    networks:
+      - fraud_detection_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # FastAPI Prediction Service
+  fastapi:
+    build:
+      context: ./fastapi
+      dockerfile: Dockerfile
+    container_name: fastapi_service
+    ports:
+      - "8000:8000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - BACKEND_STORE_URI=${BACKEND_STORE_URI}
+      - ARTIFACT_STORE_URI=${ARTIFACT_STORE_URI}
+      - MLFLOW_TRACKING_URI=http://mlflow:4000
+      - MODEL_URI=runs:/bf781e6a105445afa07d064f8f1f30a3/fraud_detector
+    env_file:
+      - .env
+    volumes:
+      - ./fastapi:/app
+    networks:
+      - fraud_detection_network
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Streamlit Dashboard
+  streamlit:
+    build:
+      context: ./streamlit
+      dockerfile: Dockerfile
+    container_name: streamlit_app
+    ports:
+      - "8501:8501"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - BACKEND_STORE_URI=${BACKEND_STORE_URI}
+      - ARTIFACT_STORE_URI=${ARTIFACT_STORE_URI}
+      - MLFLOW_TRACKING_URI=http://mlflow:4000
+    env_file:
+      - .env
+    volumes:
+      - ./streamlit:/home/app
+    networks:
+      - fraud_detection_network
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      fastapi:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_score/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Flask Transaction Simulator
+  flask:
+    build:
+      context: ./flask
+      dockerfile: Dockerfile
+    container_name: flask_transaction_simulator
+    ports:
+      - "5000:5000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - BACKEND_STORE_URI=${BACKEND_STORE_URI}
+      - ARTIFACT_STORE_URI=${ARTIFACT_STORE_URI}
+      - MLFLOW_TRACKING_URI=http://mlflow:4000
+      - MODEL_URI=runs:/bf781e6a105445afa07d064f8f1f30a3/fraud_detector
+    env_file:
+      - .env
+    volumes:
+      - ./flask:/app
+    networks:
+      - fraud_detection_network
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  fraud_detection_network:
+    driver: bridge
+    name: fraud_detection_network
+
+volumes:
+  mlflow_data:
+    name: mlflow_data

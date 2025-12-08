@@ -1,0 +1,1 @@
+print ("fastApi ready for HuggingFace deployment")
