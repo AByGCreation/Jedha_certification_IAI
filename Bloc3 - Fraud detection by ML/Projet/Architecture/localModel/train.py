@@ -55,7 +55,8 @@ load_dotenv(env_path, override=True)
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.abspath(os.path.join(current_path, "..", "..")) + "/"
-sys.path.append(os.path.join(current_path, 'lib'))
+sys.path.append(os.path.join(current_path, 'libraries'))
+
 from config import EXPERIMENT_NAME as EXPERIMENT_NAME, HF_connectionCSV as HF_connectionCSV, HF_connectionURL as HF_connectionURL, current_path as current_path, debug as debug, inputDBFormat as inputDBFormat, localDB_connectionURL as localDB_connectionURL, localDB_tableName as localDB_tableName, local_connectionURL as local_connectionURL, mlFlowLocal as mlFlowLocal, mlflow_tracking_uri as mlflow_tracking_uri, modelPrefix as modelPrefix, neonDB_connectionURL as neonDB_connectionURL, neonDB_fraudTableName as neonDB_fraudTableName, os as os, pd as pd, plottingEDA as plottingEDA, project_path as project_path, samplingSize as samplingSize, separator as separator, sys as sys
 from plotters import MarkerCluster as MarkerCluster, datetime as datetime, drawCorrelationMatrix as drawCorrelationMatrix, folium as folium, go as go, jedhaCMInverted as jedhaCMInverted, jedhaColor_black as jedhaColor_black, jedhaColor_blue as jedhaColor_blue, jedhaColor_violet as jedhaColor_violet, jedha_bg_color as jedha_bg_color, jedha_font as jedha_font, jedha_grid_color as jedha_grid_color, pd as pd, plotFeatureDistributions as plotFeatureDistributions, plt as plt, saveMap as saveMap, sns as sns
 from graphics import colors as colors, go as go, jedhaCM as jedhaCM, jedhaCMInverted as jedhaCMInverted, jedhaColor_black as jedhaColor_black, jedhaColor_blue as jedhaColor_blue, jedhaColor_blueLight as jedhaColor_blueLight, jedhaColor_violet as jedhaColor_violet, jedhaColor_white as jedhaColor_white, jedha_bg_color as jedha_bg_color, jedha_colors as jedha_colors, jedha_font as jedha_font, jedha_grid_color as jedha_grid_color, np as np, pio as pio, platform as platform 
