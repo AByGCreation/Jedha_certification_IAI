@@ -4,6 +4,7 @@
 
 
 # ==================== DATA MANIPULATION ====================
+import argparse
 from math import radians, cos, sin, asin, sqrt
 import sqlite3
 import numpy as np
@@ -12,12 +13,9 @@ from sqlalchemy import create_engine
 
 
 # ==================== VISUALIZATION ====================
-import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib import colors
 import seaborn as sns
 import plotly.graph_objects as go
-import plotly.express as px
 import plotly.io as pio
 import folium
 from folium.plugins import MarkerCluster
@@ -25,20 +23,17 @@ from folium.plugins import MarkerCluster
 # ==================== MACHINE LEARNING ====================
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder, FunctionTransformer
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
     classification_report,
-    confusion_matrix,
     accuracy_score,
     f1_score,
     ConfusionMatrixDisplay,
     RocCurveDisplay
 )
-from sklearn.base import BaseEstimator, TransformerMixin
 
 
 # ==================== MLFLOW ====================
@@ -51,11 +46,20 @@ import os
 import warnings
 import time
 import datetime
-import json
-from dotenv import load_dotenv
-from IPython.core.magic import register_cell_magic
+from dotenv import find_dotenv, load_dotenv
 import platform
-from sklearn.metrics import roc_auc_score
+import sys
+
+env_path = find_dotenv()
+load_dotenv(env_path, override=True)
+
+current_path = os.path.dirname(os.path.abspath(__file__))
+project_path = os.path.abspath(os.path.join(current_path, "..", "..")) + "/"
+sys.path.append(os.path.join(current_path, 'lib'))
+from config import EXPERIMENT_NAME as EXPERIMENT_NAME, HF_connectionCSV as HF_connectionCSV, HF_connectionURL as HF_connectionURL, current_path as current_path, debug as debug, inputDBFormat as inputDBFormat, localDB_connectionURL as localDB_connectionURL, localDB_tableName as localDB_tableName, local_connectionURL as local_connectionURL, mlFlowLocal as mlFlowLocal, mlflow_tracking_uri as mlflow_tracking_uri, modelPrefix as modelPrefix, neonDB_connectionURL as neonDB_connectionURL, neonDB_fraudTableName as neonDB_fraudTableName, os as os, pd as pd, plottingEDA as plottingEDA, project_path as project_path, samplingSize as samplingSize, separator as separator, sys as sys
+from plotters import MarkerCluster as MarkerCluster, datetime as datetime, drawCorrelationMatrix as drawCorrelationMatrix, folium as folium, go as go, jedhaCMInverted as jedhaCMInverted, jedhaColor_black as jedhaColor_black, jedhaColor_blue as jedhaColor_blue, jedhaColor_violet as jedhaColor_violet, jedha_bg_color as jedha_bg_color, jedha_font as jedha_font, jedha_grid_color as jedha_grid_color, pd as pd, plotFeatureDistributions as plotFeatureDistributions, plt as plt, saveMap as saveMap, sns as sns
+from graphics import colors as colors, go as go, jedhaCM as jedhaCM, jedhaCMInverted as jedhaCMInverted, jedhaColor_black as jedhaColor_black, jedhaColor_blue as jedhaColor_blue, jedhaColor_blueLight as jedhaColor_blueLight, jedhaColor_violet as jedhaColor_violet, jedhaColor_white as jedhaColor_white, jedha_bg_color as jedha_bg_color, jedha_colors as jedha_colors, jedha_font as jedha_font, jedha_grid_color as jedha_grid_color, np as np, pio as pio, platform as platform 
+from dataLoader import cfg as cfg, create_engine as create_engine, dataSourceLoader as dataSourceLoader, pd as pd, sqlite3 as sqlite3
 
 # ==================== SETTINGS ====================
 # Suppress warnings for cleaner output
@@ -71,90 +75,53 @@ print("✅ All libraries imported successfully!")
 #============================================================================= 
 #============================== User PARAMETERS ================================
 #============================================================================= 
-
-debug = False  # True for debug mode (smaller dataset, configure size below in : samplingSize var), False for full dataset
-plottingEDA = True # True to enable EDA plotting, False to disable
-mlFlowLocal = False  # True for local mlflow, False for hosted mlflow
-
-#============================================================================= 
-
-samplingSize = 20000  # Number of rows to sample in debug mode, minimum 1000
-
-neonDB_connectionURL = 'postgresql://neondb_owner:npg_UIrY18vhNmLE@ep-curly-sound-ag9a7x4l-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
-neonDB_fraudTableName = "neondb"
-HF_connectionURL = "https://huggingface.co/spaces/sdacelo/real-time-fraud-detection"
-HF_connectionCSV = "https://lead-program-assets.s3.eu-west-3.amazonaws.com/M05-Projects/fraudTest.csv"
-local_connectionURL = os.path.abspath("./Bloc3 - Fraud detection by ML/Projet/datasSources/inputDataset/fraudTest.csv")  # absolute path
-localDB_connectionURL = os.path.abspath("./Bloc3 - Fraud detection by ML/Projet/datasSources/inputDataset/fraudTest.db")  # absolute path
-
-localDB_tableName = "transactions"
-inputDBFormat = "db"  # "csv" or "db" or neon or HF_CSV
-
-current_path = os.path.dirname(os.path.abspath(__file__))
-
 dfRaw = pd.DataFrame()
 
-separator = ("="*80)
+# debug = True  # True for debug mode (smaller dataset, configure size below in : samplingSize var), False for full dataset
+# plottingEDA = True # True to enable EDA plotting, False to disable
+# mlFlowLocal = False  # True for local mlflow, False for hosted mlflow
 
-#---- Name defined by user for project mlFlow ----
+# #============================================================================= 
 
-modelPrefix = "LBP_fraud_detector_"
+# samplingSize = 2000  # Number of rows to sample in debug mode, minimum 1000
+
+
+
+# neonDB_connectionURL = os.getenv('NEON_DB_URL', 'postgresql://neondb_owner:npg_UIrY18vhNmLE@ep-curly-sound-ag9a7x4l-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require')
+# neonDB_fraudTableName = "neondb"
+# HF_connectionURL = "https://huggingface.co/spaces/sdacelo/real-time-fraud-detection"
+# HF_connectionCSV = "https://lead-program-assets.s3.eu-west-3.amazonaws.com/M05-Projects/fraudTest.csv"
+# local_connectionURL = os.path.abspath("./Bloc3 - Fraud detection by ML/Projet/datasSources/inputDataset/fraudTest.csv")  # absolute path
+# localDB_connectionURL = os.path.join(os.path.dirname(project_path), "datasSources", "inputDataset", "fraudTest.db")
+
+# localDB_tableName = "transactions"
+# inputDBFormat = "db"  # "csv" or "db" or neon or HF_CSV
+
+# dfRaw = pd.DataFrame()
+
+# separator = ("="*80)
+
+# #---- Name defined by user for project mlFlow ----
+
+# modelPrefix = "LBP_fraud_detector_"
 EXPERIMENT_NAME = "LBPFraudDetector"
 
-if mlFlowLocal == True:
-    mlflow_tracking_uri = "http://localhost:4000/"
-else:
-    mlflow_tracking_uri = "https://davidrambeau-bloc3-mlflow.hf.space/"
+# if mlFlowLocal == True:
+#     mlflow_tracking_uri = "http://localhost:4000/"
+# else:
+#     mlflow_tracking_uri = "https://davidrambeau-bloc3-mlflow.hf.space/"
 
-#---- Jedha Colors for plots ----
 
-jedhaColor_violet = '#8409FF'
-jedhaColor_blue = '#3AE5FF'
-jedhaColor_blueLight = '#89C2FF'
-jedhaColor_white = '#DFF4F5'
-jedhaColor_black = '#170035'
+# https://jedhard.jfrog.io/artifactory/api/docker/jedha-docker
+# jedhard.jfrog.io
 
-jedha_bg_color = jedhaColor_white
-jedha_grid_color = jedhaColor_black
 
-if platform.system() == "Darwin":
-    jedha_font = "Avenir Next"
-else:
-    jedha_font = "Avenir Next, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol"
+# trackinguri = "https://gateway.storjshare.io"
+# accessKeyId = "vodj6oqt5cnzzhqlw553kzfobba";
+# secretAccessKey = "j3yfufqzxnay56hyo4qlp4bzg767zoikxfdkcj2zmbbgsqg6q6rf6";
+# endpoint = "https://gateway.storjshare.io";
+# bucketName = "lbpfrauddetector"; 
 
-# Plotly Jedha Template
-pio.templates["jedha_template"] = go.layout.Template(
-    layout=go.Layout(
-        font=dict(family=jedha_font, color=jedhaColor_black),
-        title=dict(x=0.5, xanchor="center", font=dict(size=24, color=jedhaColor_black)),
-        plot_bgcolor=jedha_bg_color,
-        paper_bgcolor=jedha_bg_color,
-        xaxis=dict(
-            gridcolor=jedha_grid_color,
-            zerolinecolor=jedha_grid_color,
-            linecolor=jedha_grid_color,
-            ticks="outside",
-            tickcolor=jedha_grid_color,
-        ),
-        yaxis=dict(
-            gridcolor=jedha_grid_color,
-            zerolinecolor=jedha_grid_color,
-            linecolor=jedha_grid_color,
-            ticks="outside",
-            tickcolor=jedha_grid_color,
-        ),
-        legend=dict(
-            bgcolor=jedha_bg_color,
-            bordercolor=jedha_grid_color,
-            borderwidth=1,
-        ),
-    )
-)
-pio.templates.default = "jedha_template"
-
-colors = np.array([(132, 9, 255), (223,244,245), (58, 229, 255)])/255.
-jedhaCM = matplotlib.colors.LinearSegmentedColormap.from_list('Jedha Scale', colors)
-jedhaCMInverted = matplotlib.colors.LinearSegmentedColormap.from_list('Jedha Scale', colors)
 
 print("✅ Configuration load successful.")
 
@@ -174,89 +141,6 @@ def logArrayToClipboard(array, array_name="Array"):
     data_desc_rounded.to_clipboard(excel=True)
     print(f"✅ {array_name} copied to clipboard.")
 
-def saveMap(df, nbPoint=None, outputPath=''):
-    """Save a map with merchant locations and transaction clusters.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing transaction data.
-        nbPoint (int, optional): Number of points to plot. Defaults to None.
-        outputPath (str, optional): Path to save the map HTML file. Defaults to ''.
-    """
-    # ~15min pour l'ensemble des points un fichier de 500mo
-    
-    # Center map on mean latitude and longitude of merchant locations
-    center_lat = df['merch_lat'].astype(float).mean()
-    center_lon = df['merch_long'].astype(float).mean()
-
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=5, tiles='CartoDB positron', control_scale=True, width='100%', height='100%', max_bounds=True)
-
-    # Add merchant locations as points
-    
-    if nbPoint:
-        dfTemp = df.head(nbPoint)
-    else:
-        dfTemp = df
-
-    # Group by merchant and count number of transactions and frauds
-    merchant_stats = dfTemp.groupby('merchant').agg(
-        total_transactions=('is_fraud', 'size'),
-        fraud_count=('is_fraud', 'sum')
-    ).reset_index()
-
-    # Draw points for merchant locations on the map
-    # Create separate marker clusters for fraud and legitimate transactions
-
-    fraud_cluster = MarkerCluster(name='Transactions frauduleuses').add_to(m)
-    legit_cluster = MarkerCluster(name='Transactions légitimes').add_to(m)
-
-    for idx, row in dfTemp.iterrows():
-        lat = float(row['merch_lat'])
-        lon = float(row['merch_long'])
-        merchant = row['merchant']
-        total_tx = merchant_stats.loc[merchant_stats['merchant'] == merchant, 'total_transactions'].values[0]
-        fraud_tx = merchant_stats.loc[merchant_stats['merchant'] == merchant, 'fraud_count'].values[0]
-        popup_text = (
-            f"<b>Vendeur</b>: {merchant}<br>"
-            f"<b>Montant</b>: {row['amt']}$ <br>"
-            f"<b>Fraude</b>: {row['is_fraud']}<br>"
-            f"<b>Nombre total de transactions</b>: {total_tx}<br>"
-            f"<b>Nombre de transactions frauduleuses</b>: {fraud_tx}"
-        )
-        if row['is_fraud'] == 1:
-            icon = folium.Icon(color='purple', icon='exclamation-sign', prefix='glyphicon')
-            folium.Marker(
-                location=[lat, lon],
-                popup=popup_text,
-                icon=icon
-            ).add_to(fraud_cluster)
-        else:
-            icon = folium.Icon(color='lightblue', icon='ok-sign', prefix='glyphicon')
-            folium.Marker(
-                location=[lat, lon],
-                popup=popup_text,
-                icon=icon
-            ).add_to(legit_cluster)
-
-    # Add layer control to toggle clusters
-    folium.LayerControl().add_to(m)
-
-    # Add legend to the map
-    legend_html = f'''
-     <div id="customLegend" style="
-         position: fixed; 
-         bottom: 50px; left: 50px; width: 200px; height: 90px; 
-         background-color: white; z-index:9999; font-size:14px;
-         border:2px solid grey; border-radius:8px; padding: 10px;">
-         <b>Légende</b><br>
-         <i class="glyphicon glyphicon-exclamation-sign" style="color:{jedhaColor_violet}"></i> Transaction frauduleuse<br>
-         <i class="glyphicon glyphicon-ok-sign" style="color:{jedhaColor_blue}"></i> Transaction légitime
-     </div>
-    '''
-    m.get_root().html.add_child(folium.Element(legend_html))
-
-
-    m.save(outputPath, close_file=False)
-    print(f"✅ Map saved to {outputPath}")
 
 def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     """
@@ -284,32 +168,32 @@ def datetimeConverter(df: pd.DataFrame, datetime_columns: list) -> None:
             try:
                 if not pd.api.types.is_datetime64_any_dtype(df[col]):
                     df[col] = pd.to_datetime(df[col], errors='coerce')
-                    print(f"✓ {col}: converted to datetime64")
+                    print(f"✅  {col}: converted to datetime64")
                 else:
                     print(f"⊘ {col}: already datetime64")
             except Exception as e:
                 print(f"✗ {col}: Failed to convert ({e})")
 
-def dataSourceLoader(inputDBFormat: str) -> pd.DataFrame|bool:
-
+def dastaSourceLoader(inputDBFormat: str) -> pd.DataFrame|bool:
     """Load data from specified source format into a DataFrame.
 
     Args:
         inputDBFormat (str): The format of the data source ("csv", "db", "neon", "HF").
 
     Returns:
-        pd.DataFrame: Loaded DataFrame.
+        pd.DataFrame: Loaded DataFrame or False on error.
     """
     dfRaw = pd.DataFrame()
+    conn = None
+    engine = None
+
     try:
         if inputDBFormat == "csv":
             dfRaw = pd.read_csv(local_connectionURL)
         elif inputDBFormat == "db":
-
             conn = sqlite3.connect(localDB_connectionURL)
             query = f"SELECT * FROM {localDB_tableName}"
             dfRaw = pd.read_sql_query(query, conn)
-            conn.close()
         elif inputDBFormat == "neon":
             engine = create_engine(neonDB_connectionURL)
             query = f"SELECT * FROM {neonDB_fraudTableName}"
@@ -318,10 +202,18 @@ def dataSourceLoader(inputDBFormat: str) -> pd.DataFrame|bool:
             dfRaw = pd.read_csv(HF_connectionCSV)
         else:
             print("❌ Invalid inputDBFormat. Please choose 'csv', 'db', 'neon', or 'HF_CSV'.")
+            return False
     except Exception as e:
         print(f"❌ Error loading data: {str(e)}")
         return False
+    finally:
+        # Ensure connections are properly closed
+        if conn is not None:
+            conn.close()
+        if engine is not None:
+            engine.dispose()
 
+    dfRaw = dfRaw.astype({col: "float64" for col in dfRaw.select_dtypes(include=["int"]).columns})
 
     return dfRaw
 
@@ -346,14 +238,24 @@ def Preprocessor(df : pd.DataFrame) -> pd.DataFrame:
     df.drop(columns=["Column1"], inplace=True)
 
 
+
+
+
     df['ccn_len'] = df['cc_num'].astype(str).str.len()
     df['bin'] = pd.to_numeric(df['cc_num'].astype(str).str[:6], errors='coerce')
 
-    # Calculate the distance between customer and merchant locations
-    df['distance_km'] = df.apply(
-        lambda row: haversine(row['long'], row['lat'], row['merch_long'], row['merch_lat']), 
-        axis=1
-    )
+    # Calculate the distance between customer and merchant locations (vectorized)
+    lon1 = np.radians(df['long'].values)
+    lat1 = np.radians(df['lat'].values)
+    lon2 = np.radians(df['merch_long'].values)
+    lat2 = np.radians(df['merch_lat'].values)
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+    df['distance_km'] = c * 6371  # Earth radius in kilometers
+
     print(f"Distance calculated. Min: {df['distance_km'].min():.2f} km, "
         f"Max: {df['distance_km'].max():.2f} km, "
         f"Mean: {df['distance_km'].mean():.2f} km")
@@ -362,355 +264,46 @@ def Preprocessor(df : pd.DataFrame) -> pd.DataFrame:
     if not pd.api.types.is_datetime64_any_dtype(df['dob']):
         df['dob'] = pd.to_datetime(df['dob'], errors='coerce')
 
-    df['age'] = (pd.Timestamp.now() - df['dob']).dt.days // 365
+    df['age'] = ((pd.Timestamp.now() - df['dob']).dt.days // 365).astype('float32')
     df = df.sort_values(by='age', ascending=True)
 
     # Convert amt to numeric
-    df['amt'] = pd.to_numeric(df['amt'], errors='coerce')
+    df['amt'] = pd.to_numeric(df['amt'], errors='coerce').astype('float32')
     
     # Extract hour from transaction datetime
-    df['trans_hour'] = pd.to_datetime(df['trans_date_trans_time']).dt.hour
+    df['trans_hour'] = pd.to_datetime(df['trans_date_trans_time']).dt.hour.astype('float32')
 
     # Drop columns that are no longer needed (only if they exist)
    
-
-
     columns_to_drop = [
-        'dob', 'trans_date_trans_time', 'unix_time', 
-        'lat', 'long', 'merch_lat', 'merch_long', 
+        'dob', 'trans_date_trans_time', 'unix_time', 'merchant', 'gender', 'state',
+        'lat', 'long', 'merch_lat', 'merch_long', 'city', 'zip', 'city_pop', 'job', 'bin',
         'street', 'first', 'last', 'Column1', 'trans_num', "unamed: 0"
     ]
     
-
-
-
-
     existing_columns_to_drop = [col for col in columns_to_drop if col in df.columns]
     
-
-
-
-
     numeric_cols = df.select_dtypes(include=['number']).columns
     corr = df[numeric_cols].corr()
 
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(corr, annot=True, fmt=".2f", cmap=jedhaCMInverted, square=True)
-    plt.title("Matrice de corrélation des variables numériques")
-    #plt.show()
-    plt.savefig(current_path + '/outputs/Analysis_correlationMatrix_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+    # plt.figure(figsize=(10, 8))
+    # sns.heatmap(corr, annot=True, fmt=".2f", cmap=jedhaCMInverted, square=True)
+    # plt.title("Matrice de corrélation des variables numériques")
+    # #plt.show()
+    # plt.savefig(current_path + '/outputs/Analysis_correlationMatrix_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+    # plt.close()
 
-
-
-
-
-
-
-
+    drawCorrelationMatrix(df.drop(columns=["is_fraud"], inplace=False), title_suffix="_before_preprocessing", current_path=current_path)
 
     if existing_columns_to_drop:
         df.drop(columns=existing_columns_to_drop, inplace=True)
         print(f"Dropped columns: {existing_columns_to_drop}")
     else:
         print("No columns to drop (already removed or not present).")
-    
+
+    drawCorrelationMatrix(df.drop(columns=["is_fraud"], inplace=False), title_suffix="_after_preprocessing", current_path=current_path)
+
     return df
-
-#=============================== CUSTOM TRANSFORMERS ============================= #
-# class DistanceCalculator(BaseEstimator, TransformerMixin):
-#     """
-#     Custom transformer to calculate the great circle distance between customer and merchant locations.
-    
-#     This transformer prevents data leakage by computing distances independently for each sample
-#     without using any global statistics.
-    
-#     Attributes
-#     ----------
-#     None (stateless transformer)
-    
-#     Methods
-#     -------
-#     fit(X, y=None)
-#         No-op operation as this transformer is stateless.
-#     transform(X)
-#         Calculates the distance between customer (lat, long) and merchant (merch_lat, merch_long).
-    
-#     Examples
-#     --------
-#     >>> from sklearn.pipeline import Pipeline
-#     >>> pipeline = Pipeline([
-#     ...     ('distance', DistanceCalculator()),
-#     ...     ('classifier', RandomForestClassifier())
-#     ... ])
-#     >>> pipeline.fit(X_train, y_train)
-#     """
-    
-#     def fit(self, X, y=None):
-#         """
-#         Fit method (no-op for stateless transformer).
-        
-#         Parameters
-#         ----------
-#         X : pd.DataFrame
-#             Input features.
-#         y : array-like, optional
-#             Target variable (ignored).
-            
-#         Returns
-#         -------
-#         self : object
-#             Returns self for method chaining.
-#         """
-#         return self
-    
-#     def transform(self, X):
-#         """
-#         Calculate distance between customer and merchant locations.
-        
-#         Parameters
-#         ----------
-#         X : pd.DataFrame
-#             Input features containing 'lat', 'long', 'merch_lat', 'merch_long' columns.
-            
-#         Returns
-#         -------
-#         X_transformed : pd.DataFrame
-#             DataFrame with added 'distance_km' column.
-#         """
-#         X = X.copy()
-#         X['distance_km'] = X.apply(
-#             lambda row: haversine(row['long'], row['lat'], row['merch_long'], row['merch_lat']), 
-#             axis=1
-#         )
-#         return X
-
-# class AgeCalculator(BaseEstimator, TransformerMixin):
-#     """
-#     Custom transformer to calculate customer age from date of birth.
-    
-#     This transformer computes age at the time of transformation, ensuring
-#     consistent age calculation for both training and test data.
-    
-#     Attributes
-#     ----------
-#     reference_date_ : pd.Timestamp
-#         The reference date used for age calculation (set during fit).
-    
-#     Methods
-#     -------
-#     fit(X, y=None)
-#         Stores the reference date for age calculation.
-#     transform(X)
-#         Calculates age from 'dob' column using the stored reference date.
-    
-#     Examples
-#     --------
-#     >>> from sklearn.pipeline import Pipeline
-#     >>> pipeline = Pipeline([
-#     ...     ('age', AgeCalculator()),
-#     ...     ('classifier', RandomForestClassifier())
-#     ... ])
-#     >>> pipeline.fit(X_train, y_train)
-#     """
-    
-#     def fit(self, X, y=None):
-#         """
-#         Store reference date for consistent age calculation.
-        
-#         Parameters
-#         ----------
-#         X : pd.DataFrame
-#             Input features.
-#         y : array-like, optional
-#             Target variable (ignored).
-            
-#         Returns
-#         -------
-#         self : object
-#             Returns self for method chaining.
-#         """
-#         self.reference_date_ = pd.Timestamp.now()
-#         return self
-    
-#     def transform(self, X):
-#         """
-#         Calculate customer age from date of birth.
-        
-#         Parameters
-#         ----------
-#         X : pd.DataFrame
-#             Input features containing 'dob' column.
-            
-#         Returns
-#         -------
-#         X_transformed : pd.DataFrame
-#             DataFrame with added 'age' column.
-#         """
-#         X = X.copy()
-        
-#         # Ensure dob is datetime
-#         if not pd.api.types.is_datetime64_any_dtype(X['dob']):
-#             X['dob'] = pd.to_datetime(X['dob'], errors='coerce')
-        
-#         # Calculate age
-#         X['age'] = (self.reference_date_ - X['dob']).dt.days // 365
-        
-#         return X
-
-# class TimeFeatureExtractor(BaseEstimator, TransformerMixin):
-#     """
-#     Custom transformer to extract temporal features from transaction datetime.
-    
-#     Extracts hour, day of week, and month from transaction timestamp to capture
-#     temporal patterns in fraudulent behavior.
-    
-#     Attributes
-#     ----------
-#     None (stateless transformer)
-    
-#     Methods
-#     -------
-#     fit(X, y=None)
-#         No-op operation as this transformer is stateless.
-#     transform(X)
-#         Extracts time-based features from 'trans_date_trans_time' column.
-    
-#     Examples
-#     --------
-#     >>> from sklearn.pipeline import Pipeline
-#     >>> pipeline = Pipeline([
-#     ...     ('time_features', TimeFeatureExtractor()),
-#     ...     ('classifier', RandomForestClassifier())
-#     ... ])
-#     >>> pipeline.fit(X_train, y_train)
-#     """
-    
-#     def fit(self, X, y=None):
-#         """
-#         Fit method (no-op for stateless transformer).
-        
-#         Parameters
-#         ----------
-#         X : pd.DataFrame
-#             Input features.
-#         y : array-like, optional
-#             Target variable (ignored).
-            
-#         Returns
-#         -------
-#         self : object
-#             Returns self for method chaining.
-#         """
-#         return self
-    
-#     def transform(self, X):
-#         """
-#         Extract temporal features from transaction datetime.
-        
-#         Parameters
-#         ----------
-#         X : pd.DataFrame
-#             Input features containing 'trans_date_trans_time' column.
-            
-#         Returns
-#         -------
-#         X_transformed : pd.DataFrame
-#             DataFrame with added 'trans_hour', 'trans_day', 'trans_month' columns.
-#         """
-#         X = X.copy()
-        
-#         # Ensure datetime format
-#         trans_dt = pd.to_datetime(X['trans_date_trans_time'], errors='coerce')
-        
-#         # Extract temporal features
-#         X['trans_hour'] = trans_dt.dt.hour
-#         X['trans_day'] = trans_dt.dt.dayofweek  # 0=Monday, 6=Sunday
-#         X['trans_month'] = trans_dt.dt.month
-        
-#         return X
-
-# class ColumnDropper(BaseEstimator, TransformerMixin):
-    """
-    Custom transformer to drop specified columns from DataFrame.
-    
-    This transformer removes columns that are not needed for modeling,
-    such as identifiers, raw datetime fields, or redundant features.
-    
-    Attributes
-    ----------
-    columns_to_drop : list
-        List of column names to remove from the DataFrame.
-    
-    Methods
-    -------
-    fit(X, y=None)
-        No-op operation as this transformer is stateless.
-    transform(X)
-        Removes specified columns from the DataFrame.
-    
-    Examples
-    --------
-    >>> from sklearn.pipeline import Pipeline
-    >>> dropper = ColumnDropper(['dob', 'trans_date_trans_time'])
-    >>> pipeline = Pipeline([
-    ...     ('drop_cols', dropper),
-    ...     ('classifier', RandomForestClassifier())
-    ... ])
-    >>> pipeline.fit(X_train, y_train)
-    """
-    
-    def __init__(self, columns_to_drop):
-        """
-        Initialize the ColumnDropper transformer.
-        
-        Parameters
-        ----------
-        columns_to_drop : list
-            List of column names to drop from the DataFrame.
-        """
-        self.columns_to_drop = columns_to_drop
-    
-    def fit(self, X, y=None):
-        """
-        Fit method (no-op for stateless transformer).
-        
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Input features.
-        y : array-like, optional
-            Target variable (ignored).
-            
-        Returns
-        -------
-        self : object
-            Returns self for method chaining.
-        """
-        return self
-    
-    def transform(self, X):
-        """
-        Drop specified columns from DataFrame.
-        
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Input features.
-            
-        Returns
-        -------
-        X_transformed : pd.DataFrame
-            DataFrame with specified columns removed.
-        """
-        X = X.copy()
-        
-        # Only drop columns that exist in the DataFrame
-        existing_columns = [col for col in self.columns_to_drop if col in X.columns]
-        
-        if existing_columns:
-            X = X.drop(columns=existing_columns)
-        
-        return X
 
 print("✅ UDF functions loaded successfully.")
 
@@ -845,9 +438,17 @@ if __name__ == "__main__":
             else:
                 dfOptimized[col] = dfOptimized[col].astype(np.dtype(new_dtype))
             
-            print(f"✓ {col}: {old_dtype} → {new_dtype}")
+            print(f"✅  {col}: {old_dtype} → {new_dtype}")
         except Exception as e:
             print(f"✗ {col}: Failed - {str(e)[:80]}")
+    
+    # Clean up any remaining non-numeric values in numeric columns
+    # for col in dfOptimized.select_dtypes(include=['float32', 'float64', 'int32', 'int64']).columns:
+    #     dfOptimized[col] = pd.to_numeric(dfOptimized[col], errors='coerce')
+    #     if dfOptimized[col].dtype in ['float32', 'float64']:
+    #         dfOptimized[col] = dfOptimized[col].fillna(dfOptimized[col].median())
+    #     else:
+    #         dfOptimized[col] = dfOptimized[col].fillna(0)
 
     print()
     print(separator)
@@ -901,228 +502,50 @@ if __name__ == "__main__":
 
 
 
-    # Apply preprocessing
-    df = Preprocessor(df)
-        
-    print("✅ Final cleanup before EDA complete.")
-    print()
 
-    print(df.head())
-
-    print("Data types of key columns:")
-    print(f"  age: {df['age'].dtype}")
-    print(f"  amt: {df['amt'].dtype}")
-    print()
-
-
-    #======================================================================
-    ## EDA - Plotting datas ##
-    #======================================================================
-    if plottingEDA == True:
-        # Univariate analysis - Distribution of numeric variables
-        print("Generating distributions for numeric features...")
-        num_features = ["age", "amt", "trans_hour", "distance_km", "city_pop", "ccn_len"]
-
-        for f in num_features:
-            fig, ax = plt.subplots(figsize=(12, 6))
-            
-            # Plot non-fraud distribution
-            """
-            sns.histplot(
-                data=df[df['is_fraud'] == 0],
-                x=f,
-                bins=50,
-                label='Non-Fraude',
-                color=jedhaColor_blue,
-                alpha=0.7,
-                ax=ax
-                )
-        
-            """
-            
-            # Plot fraud distribution
-            sns.histplot(
-                data=df[df['is_fraud'] == 1],
-                x=f,
-                bins=50,
-                label='Fraude',
-                color=jedhaColor_violet,
-                alpha=0.75,
-                ax=ax
-            )
-            
-            ax.set_title(f'Distribution - {f}', fontweight='bold', color=jedhaColor_black)
-            ax.set_xlabel(f.capitalize(), color=jedhaColor_black)
-            ax.set_ylabel('Frequency', color=jedhaColor_black)
-            ax.set_facecolor(jedha_bg_color)
-            fig.patch.set_facecolor(jedha_bg_color)
-            ax.tick_params(colors=jedhaColor_black)
-            ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
-            plt.tight_layout()
-
-            plt.savefig(current_path + f"/outputs/Analysis_distribution_{f}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-
-            # fig.show()
-           # fig.write_image(current_path + f"/outputs/distribution_{f}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-
-        print("✅ EDA analysis complete.")
-
-
-        # Distribution of transaction amounts by fraud status
-
-        print("Distribution des fraudes:")
-        print(df['is_fraud'].value_counts())
-        print()
-        #print(df['is_fraud'].describe())
-        print()
-
-        # Visualize transaction amounts: Normal vs Fraudulent
-        fig = go.Figure()
-        # Correlation heatmap for numeric features
-
-        # numeric_cols = df.select_dtypes(include=['number']).columns
-        # corr = df[numeric_cols].corr()
-
-        # plt.figure(figsize=(10, 8))
-        # sns.heatmap(corr, annot=True, fmt=".2f", cmap=jedhaCMInverted, square=True)
-        # plt.title("Matrice de corrélation des variables numériques")
-        # #plt.show()
-        # plt.savefig(current_path + '/outputs/correlationMatrix_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
-
-
-
-
-        # Normal transactions
-        """ fig.add_trace(go.Histogram(
-            x=df[df['is_fraud']==0]['amt'],
-            name='Transactions conformes',
-            nbinsx=50,
-            opacity=0.7,
-            marker_color=jedhaColor_blue
-        )) """
-
-        # Fraud transactions
-        # fig.add_trace(go.Histogram(
-        #     x=df[df['is_fraud']==1]['amt'],
-        #     name='Transactions frauduleuses',
-        #     nbinsx=50,
-        #     opacity=0.7,
-        #     marker_color=jedhaColor_violet
-        # ))
-
-        # fig.update_layout(
-        #     title='Distribution des montants de transactions: Conformes vs Frauduleuses',
-        #     xaxis_title='Montant',
-        #     yaxis_title='Fréquence',
-        #     barmode='overlay',
-        #     height=500,
-        #     width=1000
-        # )
-
-        # #fig.show()
-        # fig.write_image(current_path + '/outputs/Analysis_transaction_amount_distribution_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
-
-
-        # Visualize fraud distribution by hour
-        fig = go.Figure()
-
-        # Normal transactions by hour
-        """ fig.add_trace(go.Histogram(
-            x=df[df['is_fraud']==0]['trans_hour'],
-            name='Transactions conformes',
-            nbinsx=24,
-            opacity=0.7,
-            marker_color=jedhaColor_blue
-        )) """
-
-        # Fraud transactions by hour
-        # fig.add_trace(go.Histogram(
-        #     x=df[df['is_fraud']==1]['trans_hour'],
-        #     name='Transactions frauduleuses',
-        #     nbinsx=24,
-        #     opacity=0.7,
-        #     marker_color=jedhaColor_violet
-        # ))
-
-        # fig.update_layout(
-        #     title='Distribution des transactions par heure: Conformes vs Frauduleuses',
-        #     xaxis_title='Heure de la journée',
-        #     yaxis_title='Fréquence',
-        #     barmode='overlay',
-        #     height=500,
-        #     width=1000
-        # )
-
-        #fig.show()
-
-        #fig.write_image(current_path + '/outputs/transaction_distribution_by_hour_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
-
-        # Visualize fraud distribution by category
-        fig = go.Figure()
-
-        # Fraud transactions by category
-        fraud_by_category = df[df['is_fraud']==1].groupby('category').size().reset_index(name='count')
-        fraud_by_category = fraud_by_category.sort_values('count', ascending=False)
-
-        fig.add_trace(go.Bar(
-            x=fraud_by_category['category'],
-            y=fraud_by_category['count'],
-            name='Transactions frauduleuses',
-            marker_color=jedhaColor_violet
-        ))
-
-        fig.update_layout(
-            title='Distribution des transactions frauduleuses par catégorie',
-            xaxis_title='Catégorie',
-            yaxis_title='Nombre de fraudes',
-            height=500,
-            width=1000
-        )
-
-
-        # Add Pareto curve (cumulative percentage)
-        fraud_by_category['cumulative'] = fraud_by_category['count'].cumsum()
-        fraud_by_category['cumulative_pct'] = fraud_by_category['cumulative'] / fraud_by_category['count'].sum() * 100
-
-        fig.add_trace(go.Scatter(
-            x=fraud_by_category['category'],
-            y=fraud_by_category['cumulative_pct'],
-            name='Courbe de Pareto (%)',
-            mode='lines+markers',
-            marker_color=jedhaColor_blue,
-            yaxis='y2'
-        ))
-
-        fig.update_layout(
-            yaxis2=dict(
-                title='Pourcentage cumulatif (%)',
-                overlaying='y',
-                side='right',
-                range=[0, 100],
-                showgrid=False,
-            )
-        )
-
-
-        #fig.show()
-        fig.write_image(current_path + '/outputs/Analysis_transaction_fraud_distribution_by_category_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
-
-
-        print("✅ Fraud distribution analysis complete.")
-
-
-    #======================================================================
-    ##  Model training and evaluation ##
-    #======================================================================
-
-    print(separator)
-    print("MODEL TRAINING AND EVALUATION")
-    print(separator)
-    print()
 
     # ============================================================================
     # STEP 1: Prepare Data for Modeling
     # ============================================================================
+
+
+    # X, y split 
+    X = df.iloc[:, 0:-1]
+    y = df.iloc[:, -1]
+
+    # Train / test split 
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
+
+    # Apply preprocessing
+    X_train_after_dataset_processing = Preprocessor(df)
+
+
+    plotFeatureDistributions(X_train_after_dataset_processing, current_path)
+
+
+
+    categorical_features = X_train_after_dataset_processing.select_dtypes("object").columns # Select all the columns containing strings
+    categorical_transformer = OneHotEncoder(drop='first', handle_unknown='error')
+
+    numerical_feature_mask = ~X_train_after_dataset_processing.columns.isin(X_train_after_dataset_processing.select_dtypes("object").columns) # Select all the columns containing anything else than strings
+    numerical_features = X_train_after_dataset_processing.columns[numerical_feature_mask]
+    numerical_transformer = StandardScaler()
+
+    feature_preprocessor = ColumnTransformer(
+        transformers=[
+            ("categorical_transformer", categorical_transformer, categorical_features),
+            ("numerical_transformer", numerical_transformer, numerical_features)
+        ]
+    )
+
+    model = Pipeline(steps=[
+        #("Dates_preprocessing", date_preprocessor),
+        ('features_preprocessing', feature_preprocessor),
+        ("Regressor",RandomForestClassifier(n_estimators=100, min_samples_split=2))
+    ])
+
+
+    print("✅ Final cleanup before EDA complete.")
 
     print("Separating labels from features...")
 
@@ -1135,6 +558,18 @@ if __name__ == "__main__":
     print(f"Unique classes in Y: {Y.unique()}")
     print()
 
+
+
+    #======================================================================
+    ##  Model training and evaluation ##
+    #======================================================================
+
+    print(separator)
+    print("MODEL TRAINING AND EVALUATION")
+    print(separator)
+    print()
+
+
     # Check if we have sufficient samples for stratified split
     if len(Y.unique()) < 2:
         print("⚠️ ERROR: Only one class present in target variable. Cannot train models.")
@@ -1146,7 +581,7 @@ if __name__ == "__main__":
             print(f"⚠️ ERROR: Insufficient samples for stratified split.")
             print(f"Minimum samples per class: {min_samples_per_class}")
         else:
-            print("✓ Sufficient samples for stratified split")
+            print("✅  Sufficient samples for stratified split")
             print(f"Fraud cases: {Y.sum()}, Non-fraud cases: {len(Y) - Y.sum()}")
             print()
             
@@ -1162,6 +597,11 @@ if __name__ == "__main__":
                 stratify=Y
             )
             
+            print(separator)
+            print(X_test.info())
+            print(separator)
+
+
             print(f"Training set size: {X_train.shape[0]} (Fraud: {Y_train.sum()}, Non-fraud: {len(Y_train) - Y_train.sum()})")
             print(f"Test set size: {X_test.shape[0]} (Fraud: {Y_test.sum()}, Non-fraud: {len(Y_test) - Y_test.sum()})")
             print()
@@ -1171,16 +611,16 @@ if __name__ == "__main__":
             # ====================================================================
             
             print("Encoding features for machine learning...")
-            
+
             # Prepare features
             X_train_processed = X_train.copy()
             X_test_processed = X_test.copy()
-            
+
             # Convert datetime to numeric if exists (days since epoch)
-            if 'dob' in X_train_processed.columns:
-                if pd.api.types.is_datetime64_any_dtype(X_train_processed['dob']):
-                    X_train_processed['dob'] = (X_train_processed['dob'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1D')
-                    X_test_processed['dob'] = (X_test_processed['dob'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1D')
+            # if 'dob' in X_train_processed.columns:
+            #     if pd.api.types.is_datetime64_any_dtype(X_train_processed['dob']):
+            #         X_train_processed['dob'] = (X_train_processed['dob'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1D')
+            #         X_test_processed['dob'] = (X_test_processed['dob'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1D')
             
             # Encode categorical features with handling for unseen labels
             label_encoders = {}
@@ -1211,16 +651,16 @@ if __name__ == "__main__":
             
             # Report unknown categories
             if unknown_counts:
-                print(f"\n⚠️ Unknown categories found in test set:")
+                print(f"⚠️ Unknown categories found in test set:")
                 for col, count in unknown_counts.items():
                     print(f"  {col}: {count} unseen values (replaced with most common training value)")
                 print()
-            
+
             # Ensure all features are numeric
             X_train_processed = X_train_processed.apply(pd.to_numeric, errors='coerce').fillna(0)
             X_test_processed = X_test_processed.apply(pd.to_numeric, errors='coerce').fillna(0)
-            
-            print(f"✓ Features encoded")
+
+            print(f"✅  Features encoded")
             print(f"  Train shape: {X_train_processed.shape}")
             print(f"  Test shape: {X_test_processed.shape}")
             print()
@@ -1235,14 +675,14 @@ if __name__ == "__main__":
             # Define models to test
             models_to_train = {
                 'LogisticRegression_100': LogisticRegression(max_iter=100, random_state=42, class_weight='balanced'),
-                'LogisticRegression_200': LogisticRegression(max_iter=200, random_state=42, class_weight='balanced'),
+                'LogisticRegression_200': LogisticRegression(max_iter=1000, random_state=42, class_weight='balanced'),
                 'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced', n_jobs=-1),
                 #'SVC': SVC(kernel='rbf', random_state=42, class_weight='balanced', probability=True)
             }
             
             # Store results
             results = {}
-            
+
             for model_name, model in models_to_train.items():
                 print(f"\n{model_name}:")
                 print("-" * 40)
@@ -1296,8 +736,6 @@ if __name__ == "__main__":
                 ax1.set_yticklabels(['Pas Fraude', 'Fraude'])
                 ax1.tick_params(colors=jedhaColor_black)
 
-                #plt.colorbar(disp1.im_, ax=ax1, label='Count', format='%d')
-
                 # Test confusion matrix
                 disp2 = ConfusionMatrixDisplay.from_predictions(
                     Y_test, y_test_pred, ax=ax2, cmap=jedhaCM, values_format='d'
@@ -1314,7 +752,6 @@ if __name__ == "__main__":
                 plt.tight_layout()
                 plt.savefig(current_path + '/outputs/Results_confusionMatrix_' + model_name + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
                 plt.close(fig)
-                #plt.colorbar(disp2.im_, ax=ax2, label='Count', format='%d')
 
             print("\n" + separator)
             print("✅ Model training complete!")
@@ -1338,97 +775,98 @@ if __name__ == "__main__":
                 'Test F1': [r['test_f1'] for r in results.values()],
                 'Time (s)': [r['train_time'] for r in results.values()]
             })
-            
+
             # Sort by Test F1 Score
             results_df = results_df.sort_values('Test F1', ascending=False)
             
             print(results_df)
             print()
-            
+
             # Visualize model comparison
-            fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-            fig.patch.set_facecolor(jedha_bg_color)
-            
-            # 1. Accuracy Comparison (Train vs Test)
-            ax = axes[0, 0]
-            x = np.arange(len(results_df))
-            width = 0.35
-            
-            ax.bar(x - width/2, results_df['Train Accuracy'], width, 
-                label='Train', color=jedhaColor_blue, alpha=0.8)
-            ax.bar(x + width/2, results_df['Test Accuracy'], width, 
-                label='Test', color=jedhaColor_violet, alpha=0.8)
-            
-            ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
-            ax.set_ylabel('Accuracy', fontweight='bold', color=jedhaColor_black)
-            ax.set_title('Accuracy Comparison: Train vs Test', fontweight='bold', color=jedhaColor_black)
-            ax.set_xticks(x)
-            ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
-            ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
-            ax.set_facecolor(jedha_bg_color)
-            ax.tick_params(colors=jedhaColor_black)
-            ax.grid(True, alpha=0.3, color=jedhaColor_black)
-            for spine in ax.spines.values():
-                spine.set_color(jedhaColor_black)
-            
-            # 2. F1 Score Comparison (Train vs Test)
-            ax = axes[0, 1]
-            ax.bar(x - width/2, results_df['Train F1'], width, 
-                label='Train', color=jedhaColor_blue, alpha=0.8)
-            ax.bar(x + width/2, results_df['Test F1'], width, 
-                label='Test', color=jedhaColor_violet, alpha=0.8)
-            
-            ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
-            ax.set_ylabel('F1 Score', fontweight='bold', color=jedhaColor_black)
-            ax.set_title('F1 Score Comparison: Train vs Test', fontweight='bold', color=jedhaColor_black)
-            ax.set_xticks(x)
-            ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
-            ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
-            ax.set_facecolor(jedha_bg_color)
-            ax.tick_params(colors=jedhaColor_black)
-            ax.grid(True, alpha=0.3, color=jedhaColor_black)
-            for spine in ax.spines.values():
-                spine.set_color(jedhaColor_black)
-            
-            # 3. Overfitting Detection (Accuracy Gap)
-            ax = axes[1, 0]
-            accuracy_gap = results_df['Train Accuracy'] - results_df['Test Accuracy']
-            colors_gap = [jedhaColor_violet if gap > 0.05 else jedhaColor_blue for gap in accuracy_gap]
-            
-            ax.bar(results_df['Model'], accuracy_gap, color=colors_gap, alpha=0.8)
-            ax.axhline(y=0, color=jedhaColor_black, linestyle='-', linewidth=0.5)
-            ax.axhline(y=0.05, color='red', linestyle='--', linewidth=1, alpha=0.5, label='Overfitting threshold')
-            
-            ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
-            ax.set_ylabel('Train-Test Accuracy', fontweight='bold', color=jedhaColor_black)
-            ax.set_title('Detection Overfitting ', fontweight='bold', color=jedhaColor_black)
-            ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
-            ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
-            ax.set_facecolor(jedha_bg_color)
-            ax.tick_params(colors=jedhaColor_black)
-            ax.grid(True, alpha=0.3, color=jedhaColor_black)
-            for spine in ax.spines.values():
-                spine.set_color(jedhaColor_black)
-            
-            # 4. Training Time Comparison
-            ax = axes[1, 1]
-            ax.bar(results_df['Model'], results_df['Time (s)'], color=jedhaColor_blue, alpha=0.8)
-            
-            ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
-            ax.set_ylabel('Training Time (seconds)', fontweight='bold', color=jedhaColor_black)
-            ax.set_title('Training Time Comparison', fontweight='bold', color=jedhaColor_black)
-            ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
-            ax.set_facecolor(jedha_bg_color)
-            ax.tick_params(colors=jedhaColor_black)
-            ax.grid(True, alpha=0.3, color=jedhaColor_black)
-            for spine in ax.spines.values():
-                spine.set_color(jedhaColor_black)
-            
-            plt.suptitle('Comparaison des modeles', 
-                        fontsize=16, fontweight='bold', color=jedhaColor_black, y=0.995)
-            plt.tight_layout()
-            #plt.show()
-            plt.savefig(current_path + '/outputs/Results_model_performance_comparison_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+            if 1 :
+                fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+                fig.patch.set_facecolor(jedha_bg_color)
+                
+                # 1. Accuracy Comparison (Train vs Test)
+                ax = axes[0, 0]
+                x = np.arange(len(results_df))
+                width = 0.35
+                
+                ax.bar(x - width/2, results_df['Train Accuracy'], width, 
+                    label='Train', color=jedhaColor_blue, alpha=0.8)
+                ax.bar(x + width/2, results_df['Test Accuracy'], width, 
+                    label='Test', color=jedhaColor_violet, alpha=0.8)
+                
+                ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+                ax.set_ylabel('Accuracy', fontweight='bold', color=jedhaColor_black)
+                ax.set_title('Accuracy Comparison: Train vs Test', fontweight='bold', color=jedhaColor_black)
+                ax.set_xticks(x)
+                ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+                ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+                ax.set_facecolor(jedha_bg_color)
+                ax.tick_params(colors=jedhaColor_black)
+                ax.grid(True, alpha=0.3, color=jedhaColor_black)
+                for spine in ax.spines.values():
+                    spine.set_color(jedhaColor_black)
+                
+                # 2. F1 Score Comparison (Train vs Test)
+                ax = axes[0, 1]
+                ax.bar(x - width/2, results_df['Train F1'], width, 
+                    label='Train', color=jedhaColor_blue, alpha=0.8)
+                ax.bar(x + width/2, results_df['Test F1'], width, 
+                    label='Test', color=jedhaColor_violet, alpha=0.8)
+                
+                ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+                ax.set_ylabel('F1 Score', fontweight='bold', color=jedhaColor_black)
+                ax.set_title('F1 Score Comparison: Train vs Test', fontweight='bold', color=jedhaColor_black)
+                ax.set_xticks(x)
+                ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+                ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+                ax.set_facecolor(jedha_bg_color)
+                ax.tick_params(colors=jedhaColor_black)
+                ax.grid(True, alpha=0.3, color=jedhaColor_black)
+                for spine in ax.spines.values():
+                    spine.set_color(jedhaColor_black)
+                
+                # 3. Overfitting Detection (Accuracy Gap)
+                ax = axes[1, 0]
+                accuracy_gap = results_df['Train Accuracy'] - results_df['Test Accuracy']
+                colors_gap = [jedhaColor_violet if gap > 0.05 else jedhaColor_blue for gap in accuracy_gap]
+                
+                ax.bar(results_df['Model'], accuracy_gap, color=colors_gap, alpha=0.8)
+                ax.axhline(y=0, color=jedhaColor_black, linestyle='-', linewidth=0.5)
+                ax.axhline(y=0.05, color='red', linestyle='--', linewidth=1, alpha=0.5, label='Overfitting threshold')
+                
+                ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+                ax.set_ylabel('Train-Test Accuracy', fontweight='bold', color=jedhaColor_black)
+                ax.set_title('Detection Overfitting ', fontweight='bold', color=jedhaColor_black)
+                ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+                ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+                ax.set_facecolor(jedha_bg_color)
+                ax.tick_params(colors=jedhaColor_black)
+                ax.grid(True, alpha=0.3, color=jedhaColor_black)
+                for spine in ax.spines.values():
+                    spine.set_color(jedhaColor_black)
+                
+                # 4. Training Time Comparison
+                ax = axes[1, 1]
+                ax.bar(results_df['Model'], results_df['Time (s)'], color=jedhaColor_blue, alpha=0.8)
+                
+                ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+                ax.set_ylabel('Training Time (seconds)', fontweight='bold', color=jedhaColor_black)
+                ax.set_title('Training Time Comparison', fontweight='bold', color=jedhaColor_black)
+                ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+                ax.set_facecolor(jedha_bg_color)
+                ax.tick_params(colors=jedhaColor_black)
+                ax.grid(True, alpha=0.3, color=jedhaColor_black)
+                for spine in ax.spines.values():
+                    spine.set_color(jedhaColor_black)
+                
+                plt.suptitle('Comparaison des modeles',
+                            fontsize=16, fontweight='bold', color=jedhaColor_black, y=0.995)
+                plt.tight_layout()
+                plt.savefig(current_path + '/outputs/Results_model_performance_comparison_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+                plt.close(fig)
             
             # ====================================================================
             # STEP 6: Best Model Analysis
@@ -1468,8 +906,8 @@ if __name__ == "__main__":
             ax.legend(facecolor=jedha_bg_color, labelcolor=jedhaColor_black)
             ax.grid(True, alpha=0.3, color=jedhaColor_black)
             plt.tight_layout()
-            #plt.show()
             plt.savefig(current_path + '/outputs/Results_roc_curve_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+            plt.close(fig)
             
             # Classification Report
             print("\nClassification Report (Test Set):")
@@ -1479,7 +917,7 @@ if __name__ == "__main__":
             
             # Feature importance (if RandomForest)
             if best_model_name == 'RandomForest':
-                print("\nFeatures les plus importantes dans l'analyse:")
+                print("\nFeatures les plus importantes dans la creation du Random Forest:")
                 print(separator)
                 
                 feature_importance = pd.DataFrame({
@@ -1495,7 +933,7 @@ if __name__ == "__main__":
                     color=jedhaColor_violet, alpha=0.8)
                 ax.set_xlabel('Importance', fontweight='bold', color=jedhaColor_black)
                 ax.set_ylabel('Feature', fontweight='bold', color=jedhaColor_black)
-                ax.set_title('Top 10 Feature Importances - RandomForest', 
+                ax.set_title('Features les plus importantes dans la creation du Random Forest', 
                             fontweight='bold', color=jedhaColor_black)
                 ax.set_facecolor(jedha_bg_color)
                 fig.patch.set_facecolor(jedha_bg_color)
@@ -1505,11 +943,12 @@ if __name__ == "__main__":
                     spine.set_color(jedhaColor_black)
                 plt.gca().invert_yaxis()
                 plt.tight_layout()
-                #plt.show()
                 plt.savefig(current_path + '/outputs/Results_feature_importance_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+                plt.close(fig)
             
-            print("\n✅ Model evaluation complete!")
-            print(separator)
+    print("\n✅ Model evaluation complete!")
+    print(separator)
+
 
 
     # ============================================================================
@@ -1521,7 +960,6 @@ if __name__ == "__main__":
     print(separator)
     print()
 
-
     # Set tracking URI (MLflow server)
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     
@@ -1530,6 +968,7 @@ if __name__ == "__main__":
 
     # Get experiment metadata
     experiment = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
+    
 
     print(f"Experiment Name: {EXPERIMENT_NAME}")
     print(f"Experiment ID: {experiment.experiment_id}")
@@ -1539,14 +978,24 @@ if __name__ == "__main__":
     # ============================================================================
     # Log Best Model to MLflow
     # ============================================================================
+        # Call mlflow autolog
+    mlflow.sklearn.autolog(log_models=False) # We won't log models right away
+    # Parse arguments given in shell script
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--n_estimators", default=3)
+    parser.add_argument("--min_samples_split", default=5)
+    args = parser.parse_args()
 
-    if 'best_model_name' in locals() and 'best_result' in locals():
+    if 'best_model_name' in locals():
         
+        # Start MLflow run
         print(f"Logging best model to MLflow: {best_model_name}")
         print()
         
         # Start MLflow run
-        with mlflow.start_run(experiment_id=experiment.experiment_id, run_name=f"{best_model_name}_production") as run:
+
+        with mlflow.start_run(experiment_id=experiment.experiment_id, run_name=f"{best_model_name}") as run:
+       # with mlflow.start_run(experiment_id = experiment.experiment_id) as run:
             
             # ====================================================================
             # Log Parameters
@@ -1558,6 +1007,7 @@ if __name__ == "__main__":
             model_params = best_result['model'].get_params()
             
             # Log general parameters
+            
             mlflow.log_param("model_type", best_model_name)
             mlflow.log_param("test_size", 0.2)
             mlflow.log_param("random_state", 42)
@@ -1573,9 +1023,28 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(f"  ⚠️ Could not log parameter {param_name}: {e}")
             
-            print("✓ Parameters logged")
+            print("✅  Parameters logged")
             print()
+
+
+            # ====================================================================
+            # Log Tags
+            # ====================================================================
             
+            print("Logging tags...")
+            
+            try:
+                mlflow.set_tag("status", "staging")
+                mlflow.set_tag("model_family", "LBPFraudDetection")
+                mlflow.set_tag("model_name", best_model_name)
+                mlflow.set_tag("data_source", inputDBFormat)
+                
+                print("✅  Tags logged")
+            except Exception as e:
+                print(f"⚠️ Could not log tags: {e}")
+            
+            print()
+
             # ====================================================================
             # Log Metrics
             # ====================================================================
@@ -1599,7 +1068,7 @@ if __name__ == "__main__":
             mlflow.log_metric("test_samples", len(X_test))
             mlflow.log_metric("fraud_ratio", Y.sum() / len(Y))
             
-            print("✓ Metrics logged")
+            print("✅  Metrics logged")
             print()
             
             # ====================================================================
@@ -1615,86 +1084,44 @@ if __name__ == "__main__":
                 # Infer model signature
                 signature = infer_signature(X_train_processed, predictions)
                 
-                # Log the model
+                # Calculate actual scores for logging
+                train_score = best_result['model'].score(X_train_processed, Y_train)
+                test_score = best_result['model'].score(X_test_processed, Y_test)
+
+                mlflow.log_metric("train_score", train_score)
+                mlflow.log_metric("test_score", test_score)
+            except Exception as e:
+                print(f"⚠️ Could not calculate signature: {e}")
+                signature = None
+
+            # Log the model to MLflow (skip if S3 not configured)
+            try:
                 mlflow.sklearn.log_model(
                     sk_model=best_result['model'],
-                    name=f"{EXPERIMENT_NAME}_model",
-                    registered_model_name=f"{best_model_name}_production",
+                    artifact_path=f"{EXPERIMENT_NAME}",
+                    registered_model_name=f"{best_model_name}",
                     signature=signature,
                     input_example=X_train_processed.head(5)
                 )
+
+
+
+                print("✅  Model artifact logged to MLflow")
+            except Exception as artifact_error:
                 
-                print("✓ Model artifact logged")
-            except Exception as e:
-                print(f"⚠️ Could not log model artifact: {e}")
-                print("  This is usually due to S3 bucket permissions or connectivity issues.")
-                print("  Metrics and parameters were still logged successfully.")
-            
+                print("⚠️ S3 credentials not configured. Skipping model artifact upload.")
+                print("  Metrics and parameters have been logged successfully.")
+
+                        
             print()
-            
-            # ====================================================================
-            # Log Additional Artifacts
-            # ====================================================================
-            
-            print("Logging additional artifacts...")
-            
-            try:
-                # Save feature names and encoders info
-                feature_info = {
-                    'features': list(X_train_processed.columns),
-                    'n_features': X_train_processed.shape[1],
-                    'encoded_columns': list(label_encoders.keys()) if 'label_encoders' in locals() else []
-                }
-                
-                # Create temporary file
-                temp_file = 'feature_info.json'
-                with open(temp_file, 'w') as f:
-                    json.dump(feature_info, f, indent=2)
-                
-                # Try to log artifact
-                mlflow.log_artifact(temp_file)
-                
-                # Clean up temporary file
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-                
-                print("✓ Additional artifacts logged")
-            except Exception as e:
-                print(f"⚠️ Could not log additional artifacts: {e}")
-                print("  This is usually due to S3 bucket permissions or connectivity issues.")
-                
-                # Clean up temporary file even if logging failed
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-            
-            print()
-            
-            # ====================================================================
-            # Log Tags
-            # ====================================================================
-            
-            print("Logging tags...")
-            
-            try:
-                mlflow.set_tag("model_family", "fraud_detection")
-                mlflow.set_tag("data_source", inputDBFormat)
-                mlflow.set_tag("best_model", "true")
-                mlflow.set_tag("production_ready", "true")
-                mlflow.set_tag("preprocessing", "manual")
-                
-                print("✓ Tags logged")
-            except Exception as e:
-                print(f"⚠️ Could not log tags: {e}")
-            
-            print()
-            
+
             # ====================================================================
             # Display Run Information
             # ====================================================================
             
-            print("=" * 80)
+            print(separator)
             print("MLFLOW RUN SUMMARY")
-            print("=" * 80)
+            print(separator)
             print(f"Run ID: {run.info.run_id}")
             print(f"Experiment ID: {run.info.experiment_id}")
             print(f"Model: {best_model_name}")
@@ -1714,3 +1141,25 @@ if __name__ == "__main__":
     else:
         print("⚠️ No trained models found. Please run the model training cell first.")
         print("Variables 'best_model_name' and 'best_result' are required.")
+
+
+
+
+# Récupérer la dernière version du modèle
+client = mlflow.MlflowClient()
+latest = client.get_latest_versions(
+    best_model_name, stages=["None"]
+)
+if latest:
+    model_version = latest[-1].version
+    print(f"[INFO] Model logged as version {model_version}")
+
+    # Mettre à jour l’alias "candidate"
+    client.set_registered_model_alias(
+        name=best_model_name,
+        alias="staging",
+        version=model_version,
+    )
+    print(f"[INFO] Alias 'staging' now points to version {model_version}")
+else:
+    print("[WARN] Aucun modèle trouvé dans le registre.")
