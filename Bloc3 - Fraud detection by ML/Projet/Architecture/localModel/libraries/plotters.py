@@ -3,16 +3,17 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objects as go
-from graphics import jedhaColor_black, jedhaColor_blue, jedhaColor_violet, jedha_bg_color, jedha_grid_color, jedha_font, jedhaCMInverted
+from sklearn.metrics import ConfusionMatrixDisplay
+from graphics import jedhaColor_black, jedhaColor_blue, jedhaColor_violet, jedha_bg_color, jedha_grid_color, jedha_font, jedhaCMInverted, jedhaCM
 # ==================== DATA MANIPULATION ====================
 import pandas as pd
 import datetime
 import folium
 from folium.plugins import MarkerCluster
+import os
+import numpy as np
 
-
-
-
+current_path = os.path.dirname(os.path.abspath(__file__))
 
 #======================================================================
 ## EDA - Plotting datas ##
@@ -222,3 +223,127 @@ def saveMap(df, nbPoint=None, outputPath=''):
 
     m.save(outputPath, close_file=False)
     print(f"✅ Map saved to {outputPath}")
+
+
+def draw_confusion_matrices(model_name, y_train, y_train_pred, y_test, y_test_pred):
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    
+    # Training confusion matrix
+    disp1 = ConfusionMatrixDisplay.from_predictions(
+        y_train, y_train_pred, ax=ax1, cmap=jedhaCM, values_format='d'
+    )
+
+    ax1.set_title(f"{model_name} - Training Set", color=jedhaColor_black, fontsize=12, fontweight='bold', fontname={jedha_font})
+    ax1.set_facecolor(jedha_bg_color)
+    ax1.xaxis.label.set_color(jedhaColor_black)
+    ax1.yaxis.label.set_color(jedhaColor_black)
+    ax1.set_xticklabels(['Pas Fraude', 'Fraude'])
+    ax1.set_yticklabels(['Pas Fraude', 'Fraude'])
+    ax1.tick_params(colors=jedhaColor_black)
+
+    # Test confusion matrix cx
+    disp2 = ConfusionMatrixDisplay.from_predictions(
+        y_test, y_test_pred, ax=ax2, cmap=jedhaCM, values_format='d'
+    )
+    ax2.set_title(f"{model_name} - Test Set", color=jedhaColor_black, fontsize=12, fontweight='bold')
+    ax2.set_facecolor(jedha_bg_color)
+    ax2.xaxis.label.set_color(jedhaColor_black)
+    ax2.yaxis.label.set_color(jedhaColor_black)
+    ax2.set_xticklabels(['Pas Fraude', 'Fraude'])
+    ax2.set_yticklabels(['Pas Fraude', 'Fraude'])
+    ax2.tick_params(colors=jedhaColor_black)
+    
+    fig.patch.set_facecolor(jedha_bg_color)
+    plt.tight_layout()
+    plt.savefig(current_path + '/outputs/Results_confusionMatrix_' + model_name + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+    plt.close(fig)
+
+
+
+
+            # Visualize model comparison
+def draw_model_comparison(results_df):
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.patch.set_facecolor(jedha_bg_color)
+    
+    # 1. Accuracy Comparison (Train vs Test)
+    ax = axes[0, 0]
+    x = np.arange(len(results_df))
+    width = 0.35
+    
+    ax.bar(x - width/2, results_df['Train Accuracy'], width, 
+        label='Train', color=jedhaColor_blue, alpha=0.8)
+    ax.bar(x + width/2, results_df['Test Accuracy'], width, 
+        label='Test', color=jedhaColor_violet, alpha=0.8)
+    
+    ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+    ax.set_ylabel('Accuracy', fontweight='bold', color=jedhaColor_black)
+    ax.set_title('Accuracy Comparison: Train vs Test', fontweight='bold', color=jedhaColor_black)
+    ax.set_xticks(x)
+    ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+    ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+    ax.set_facecolor(jedha_bg_color)
+    ax.tick_params(colors=jedhaColor_black)
+    ax.grid(True, alpha=0.3, color=jedhaColor_black)
+    for spine in ax.spines.values():
+        spine.set_color(jedhaColor_black)
+    
+    # 2. F1 Score Comparison (Train vs Test)
+    ax = axes[0, 1]
+    ax.bar(x - width/2, results_df['Train F1'], width, 
+        label='Train', color=jedhaColor_blue, alpha=0.8)
+    ax.bar(x + width/2, results_df['Test F1'], width, 
+        label='Test', color=jedhaColor_violet, alpha=0.8)
+    
+    ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+    ax.set_ylabel('F1 Score', fontweight='bold', color=jedhaColor_black)
+    ax.set_title('F1 Score Comparison: Train vs Test', fontweight='bold', color=jedhaColor_black)
+    ax.set_xticks(x)
+    ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+    ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+    ax.set_facecolor(jedha_bg_color)
+    ax.tick_params(colors=jedhaColor_black)
+    ax.grid(True, alpha=0.3, color=jedhaColor_black)
+    for spine in ax.spines.values():
+        spine.set_color(jedhaColor_black)
+    
+    # 3. Overfitting Detection (Accuracy Gap)
+    ax = axes[1, 0]
+    accuracy_gap = results_df['Train Accuracy'] - results_df['Test Accuracy']
+    colors_gap = [jedhaColor_violet if gap > 0.05 else jedhaColor_blue for gap in accuracy_gap]
+    
+    ax.bar(results_df['Model'], accuracy_gap, color=colors_gap, alpha=0.8)
+    ax.axhline(y=0, color=jedhaColor_black, linestyle='-', linewidth=0.5)
+    ax.axhline(y=0.05, color='red', linestyle='--', linewidth=1, alpha=0.5, label='Overfitting threshold')
+    
+    ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+    ax.set_ylabel('Train-Test Accuracy', fontweight='bold', color=jedhaColor_black)
+    ax.set_title('Detection Overfitting ', fontweight='bold', color=jedhaColor_black)
+    ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+    ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+    ax.set_facecolor(jedha_bg_color)
+    ax.tick_params(colors=jedhaColor_black)
+    ax.grid(True, alpha=0.3, color=jedhaColor_black)
+    for spine in ax.spines.values():
+        spine.set_color(jedhaColor_black)
+    
+    # 4. Training Time Comparison
+    ax = axes[1, 1]
+    ax.bar(results_df['Model'], results_df['Time (s)'], color=jedhaColor_blue, alpha=0.8)
+    
+    ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+    ax.set_ylabel('Training Time (seconds)', fontweight='bold', color=jedhaColor_black)
+    ax.set_title('Training Time Comparison', fontweight='bold', color=jedhaColor_black)
+    ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+    ax.set_facecolor(jedha_bg_color)
+    ax.tick_params(colors=jedhaColor_black)
+    ax.grid(True, alpha=0.3, color=jedhaColor_black)
+    for spine in ax.spines.values():
+        spine.set_color(jedhaColor_black)
+    
+    plt.suptitle('Comparaison des modeles',
+                fontsize=16, fontweight='bold', color=jedhaColor_black, y=0.995)
+    plt.tight_layout()
+    plt.savefig(current_path + '/outputs/Results_model_performance_comparison_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+    plt.close(fig)
+            
