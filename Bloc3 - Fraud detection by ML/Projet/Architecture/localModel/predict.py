@@ -12,15 +12,8 @@ import sys
 env_path = find_dotenv()
 load_dotenv(env_path, override=True)
 
-#current_path = os.path.dirname(os.path.abspath(__file__))
-#project_path = os.path.abspath(os.path.join(current_path, "..", "..")) + "/"
-#sys.path.append(os.path.join(current_path, 'libraries'))
 current_path = os.path.dirname(os.path.abspath(__file__))
-# Define current_path FIRST
-
 sys.path.insert(0, os.path.join(current_path, 'libraries'))
-
-# NOW use current_path
 project_path = os.path.abspath(os.path.join(current_path, "..", "..")) + "/"
 
 
@@ -30,13 +23,10 @@ from graphics import colors as colors, go as go, jedhaCM as jedhaCM, jedhaCMInve
 from dataLoader import cfg as cfg, create_engine as create_engine, dataSourceLoader as dataSourceLoader, pd as pd, sqlite3 as sqlite3
 from converters import haversine as haversine
 from preprocessor import Preprocessor as Preprocessor
-# ######################################### #
-# EXTRACT FUNCTION
-# connect API to get real-time transactions #
-# save raw data to S3 bucket in json        #
-# ######################################### #
 
-def extract(API_URL, s3_client, bucket_name):
+def getTransactionFromAPI(API_URL, s3_client, bucket_name):
+    """Fetch transaction data from API and save raw data to S3 bucket in JSON format."""
+
     r = requests.get(API_URL)
     if r.status_code == 200:
         # Double parsing car l'API encode 2 fois
@@ -67,15 +57,9 @@ def extract(API_URL, s3_client, bucket_name):
     else:
         print(f"Erreur API: status code {r.status_code}")
 
-
-
-# ############################################ #
-#            TRANSFORM FUNCTION                #
-# process data to fit model input format       #
-# save transformed data with prediction to S3  #
-# ############################################ #
-
 def transform(datas, s3_client, bucket_name):
+    """Process transaction data and make predictions using the loaded model."""
+    print("✅ Preparing data for prediction...")
 
     # Prepare data to stick input format of model 
     df = pd.DataFrame(datas['data'], columns=datas['columns']  )
@@ -121,9 +105,6 @@ def transform(datas, s3_client, bucket_name):
 
     # Add prediction to DataFrame
     
-
-
-
 def load(df, engine):
     try:
         # Écrire tout le DataFrame
@@ -132,8 +113,7 @@ def load(df, engine):
     except Exception as e:
         print(f"Erreur lors de l'enregistrement en base de données : {str(e)}")
 
-
-def getModelRunID():
+def getMLFlowLastModel():
     # Récupérer la dernière version du modèle
     client = mlflow.MlflowClient()
 
@@ -177,13 +157,12 @@ def getModelRunID():
     else:
         print("[WARN] Aucun modèle trouvé dans le registre.")
 
-
 if __name__ == "__main__":
 
     # Set tracking URI 
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
-    runID = getModelRunID()
+    runID = getMLFlowLastModel()
     print(f"Latest model version: {runID}")
 
 
@@ -205,7 +184,7 @@ if __name__ == "__main__":
         print("================================")
         print("EXTRACT - calling API to generate transaction...")
 
-        donnees = extract(API_URL, s3_client, bucket_name)
+        donnees = getTransactionFromAPI(API_URL, s3_client, bucket_name)
 
         if donnees:
             print("TRANSFORM - processing transaction data...")

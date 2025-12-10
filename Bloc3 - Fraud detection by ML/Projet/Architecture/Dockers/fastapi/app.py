@@ -13,15 +13,65 @@ load_dotenv()
 # Global model variable
 model = None
 
+
+
+def getModelRunID():
+    """
+    Retrieve the run ID of the best registered model from MLflow.
+    
+    This function connects to the MLflow tracking server and retrieves the best model
+    based on the experiment name and model prefix specified in environment variables.
+    
+    Environment Variables:
+        EXPERIMENT_NAME (str, optional): The name of the MLflow experiment. 
+            Defaults to "LBPFraudDetector".
+        MODEL_PREFIX (str, optional): The prefix for the registered model name. 
+            Defaults to "LBP_fraud_detector_".
+    
+    Returns:
+        RegisteredModel: The MLflow registered model object containing metadata about 
+            the best model.
+    
+    Raises:
+        Exception: If the specified experiment is not found in the MLflow tracking server.
+    
+    Example:
+        >>> model = getModelRunID()
+        >>> print(model.name)
+        LBP_fraud_detector_best_model
+    """
+    client = mlflow.tracking.MlflowClient()
+    # Get the best model from the experiment
+    experiment = client.get_experiment_by_name(os.getenv("EXPERIMENT_NAME", "LBPFraudDetector"))
+    if experiment is None:
+        raise Exception("Experiment not found")
+
+    best_model_name = os.getenv("MODEL_PREFIX", "LBP_fraud_detector_") + "best_model"
+    best_model = client.get_registered_model(best_model_name)
+
+    print(f"[INFO] Registered Model: {best_model.name}")
+    return best_model
+
+
+
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Load model
+    
     global model
+
+ 
+
+
+
     try:
         # Configuration MLFlow avec authentification
         mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
         mlflow.set_tracking_uri(mlflow_tracking_uri)
         
+        test = getModelRunID()
         # Authentification Hugging Face (si nécessaire)
         hf_token = os.getenv("HF_TOKEN")
         if hf_token:
@@ -44,9 +94,11 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
 
 app = FastAPI(
-    title="Fraud Detection API", 
+    title="LBFraud Detection API", 
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    
+
 )
 
 class Transaction(BaseModel):
