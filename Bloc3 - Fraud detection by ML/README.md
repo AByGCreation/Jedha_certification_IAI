@@ -57,7 +57,7 @@ Schema global du Pipeline
 **Comparaison des modèles :**
 
 | Modèle                    | AUC-ROC | Precision | Recall | F1-Score |
-| ------------------------- | ------- | --------- | ------ | -------- | ------- |
+| ------------------------- | ------- | --------- | ------ | -------- | 
 | **RandomForest** ⭐       | 1.000   | 100.0%    | 100.0% | 100.0%   |
 | LogisticRegression (100)  | 0.740   | 93.22%    | 100.0% | 96.48%   |
 | LogisticRegression (1000) | 0.730   | 93.75%    | 100.0% | 96.79%   |
@@ -77,10 +77,10 @@ Schema global du Pipeline
 
 | Service   | URL                                           | Description               |
 | --------- | --------------------------------------------- | ------------------------- |
-| Streamlit | https://davidrambeau-bloc3-streamlit.hf.space | Interface utilisateur     |
+| Streamlit | https://davidrambeau-bloc3-streamlit.hf.space | Essai de connxion     |
 | FastAPI   | https://davidrambeau-bloc3-fastapi.hf.space   | API de scoring            |
 | MLflow    | https://davidrambeau-bloc3-mlflow.hf.space    | Tracking & model registry |
-| Flask     | https://davidrambeau-bloc3-flask.hf.space     | Monitoring (optionnel)    |
+| Flask     | https://davidrambeau-bloc3-flask.hf.space     | Interface utilisateur     |
 
 **Stockage externe :**
 
@@ -106,4 +106,4 @@ Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de
 
 **Dernière mise à jour** : Décembre 2025
 **Version** : 1.0.0
-**Statut global** : 🟡 En cours de
+**Statut global** : 🟡 En cours de développement
