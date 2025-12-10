@@ -20,18 +20,7 @@
 
 ### Objectifs {#objectifs-bloc-3}
 
-Concevoir et mettre en œuvre un pipeline de données industriel complet, depuis l'ingestion jusqu'au déploiement de modèles de machine learning en production avec monitoring continu.
-
-### Contenu
-
-- Conception de pipelines de données temps réel
-- ETL/ELT et orchestration (Apache Airflow)
-- Feature engineering et preprocessing
-- Entraînement et évaluation de modèles ML
-- MLOps : tracking (MLflow), versioning, CI/CD
-- Conteneurisation (Docker) et déploiement
-- Monitoring et observabilité des données
-- Qualité des données (Great Expectations)
+Concevoir et mettre en œuvre un pipeline de données industriel complet, depuis l'ingestion jusqu'au déploiement de modèles de machine learning en production.
 
 ### Ressources
 
@@ -39,7 +28,7 @@ Les ressources et exercices pratiques sont organisés dans les dossiers de ce bl
 
 ### Projet : Pipeline Fraud Detection {#projet-pipeline-fraud-detection}
 
-**Contexte** : Mise en production d'un système de détection de fraude bancaire temps réel capable de traiter 21 millions de transactions avec une latence inférieure à 50ms par prédiction.
+**Contexte** : Mise en production d'un système de détection de fraude bancaire temps réel par prédiction ML.
 
 #### Objectifs du projet
 
@@ -49,22 +38,12 @@ Les ressources et exercices pratiques sont organisés dans les dossiers de ce bl
 4. Surveiller la qualité et la conformité
 5. Développer des procédures de contrôle qualité
 
-#### Livrables attendus
-
-| Livrable                | Format      | Contenu                                     |
-| ----------------------- | ----------- | ------------------------------------------- |
-| Pipeline de données     | Code Python | ETL/ELT, feature engineering, orchestration |
-| Modèles ML entraînés    | MLflow      | 4 modèles comparés (RF, LogReg, SVC)        |
-| Application déployée    | Docker/HF   | Flask + FastAPI + MLflow en production      |
-| Documentation technique | PDF         | Architecture, justifications, performances  |
-| Présentation            | Slides      | Synthèse 15 min pour le jury                |
-| Vidéo démonstration     | MP4/Link    | Scoring temps réel en fonctionnement        |
-
 #### Architecture déployée
 
 **Stack technologique :**
+![Pipeline](/https://github.com/AByGCreation/Jedha_certification_IAI/blob/master/Bloc3%20-%20Fraud%20detection%20by%20ML/Dossier/assets/pipeline.png "Schema global du Pipeline")
 
-[XXX] inserer le pipeline image
+
 
 #### Dataset utilisé
 
@@ -74,20 +53,17 @@ Les ressources et exercices pratiques sont organisés dans les dossiers de ce bl
 
 **Comparaison des modèles :**
 
-| Modèle                    | AUC-ROC | Precision | Recall | F1-Score | Latence |
+| Modèle                    | AUC-ROC | Precision | Recall | F1-Score |
 | ------------------------- | ------- | --------- | ------ | -------- | ------- |
-| **RandomForest** ⭐       | 1.000   | 100.0%    | 100.0% | 100.0%   | 8.3ms   |
-| LogisticRegression (100)  | 0.740   | 93.22%    | 100.0% | 96.48%   | 0.6ms   |
-| LogisticRegression (1000) | 0.730   | 93.75%    | 100.0% | 96.79%   | 0.6ms   |
+| **RandomForest** ⭐       | 1.000   | 100.0%    | 100.0% | 100.0%   |
+| LogisticRegression (100)  | 0.740   | 93.22%    | 100.0% | 96.48%   |
+| LogisticRegression (1000) | 0.730   | 93.75%    | 100.0% | 96.79%   |
 
 **Modèle sélectionné** : RandomForest
 
 #### Points clés développés
 
 - ✅ **ETL/ELT complet** : Feature engineering, transformations, multi-bases
-- ✅ **Automatisation** : Orchestration Supervisor, CI/CD GitHub Actions
-- ✅ **Monitoring** : Evidently AI (data drift), Grafana (métriques)
-- ✅ **Qualité** : Great Expectations, validation continue
 - ✅ **MLOps** : MLflow tracking, model registry, versioning
 - ✅ **Conteneurisation** : Docker multi-stage, déploiement HF Spaces
 - ✅ **Conformité** : GDPR, PCI-DSS, AI Act (explicabilité)
