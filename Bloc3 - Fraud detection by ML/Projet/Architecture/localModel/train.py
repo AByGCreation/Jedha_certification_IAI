@@ -24,6 +24,7 @@ from folium.plugins import MarkerCluster
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import FunctionTransformer, Pipeline
@@ -191,6 +192,7 @@ if __name__ == "__main__":
     pipelines = {
     "Random Forest": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', RandomForestClassifier())]),
     #"Gradient Boosting": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', GradientBoostingClassifier())]),
+    "SVC": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', SVC())]),
     "Logistic Regression_100": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression(max_iter=100))]),
     "Logistic Regression_1000": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression(max_iter=1000))])
     }
@@ -504,7 +506,9 @@ if __name__ == "__main__":
                 signature = None
 
             # Log the model to MLflow (skip if S3 not configured)
+
             try:
+                
                 mlflow.sklearn.log_model(
                     sk_model=best_result['model'],
                     artifact_path=f"{EXPERIMENT_NAME}",
