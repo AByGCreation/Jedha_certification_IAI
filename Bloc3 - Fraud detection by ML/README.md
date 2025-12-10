@@ -42,7 +42,8 @@ Les ressources et exercices pratiques sont organisés dans les dossiers de ce bl
 
 **Stack technologique :**
 Schema global du Pipeline
-[<img src="assets/pipeline.png">](https://github.com/AByGCreation/Jedha_certification_IAI/blob/master/Bloc3%20-%20Fraud%20detection%20by%20ML/Dossier/assets/pipeline.png)
+
+![pipeline](Dossier/assets/pipeline.png)
 
 
 
