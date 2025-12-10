@@ -1,0 +1,49 @@
+name: CI/CD Fraud Detection
+
+# Déclencheur : Push sur 'main'
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # GATE 1 : Tests unitaires
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3        # Clone le code
+      - uses: actions/setup-python@v4    # Install Python 3.10
+      - run: pip install -r requirements.txt
+      - run: pytest tests/unit/ -v       # Exécute les tests
+      # ❌ Si échec 
+  
+  # GATE 2 : Tests d'intégration
+  integration-tests:
+    needs: unit-tests                    
+    runs-on: ubuntu-latest
+    services:
+      postgres:                          # Lance PostgreSQL temporaire
+        image: postgres:15
+    steps:
+      - run: pytest tests/integration/   # Tests avec vraie DB
+      # ❌ Si échec
+  
+  # Déploiement staging (automatique)
+  deploy-staging:
+    needs: integration-tests             # Attend que GATE 2 passe ✅
+    steps:
+      - run: python scripts/deploy_to_hf_staging.py
+  
+  # GATE 3 : Tests smoke sur staging
+  smoke-tests:
+    needs: deploy-staging                # Attend déploiement staging
+    steps:
+      - run: pytest tests/smoke/ --staging-url=...
+      # ❌ Si échec
+  
+  # Déploiement production (MANUEL)
+  deploy-production:
+    needs: smoke-tests
+    environment: production              # 🔒 Nécessite approbation manuelle
+    steps:
+      - run: python scripts/deploy_to_hf_production.py
+      - run: echo "✅ Déployé en prod"
