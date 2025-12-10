@@ -1,4 +1,4 @@
-from flask import Flask, json, render_template, request, jsonify
+from flask import Flask, json, render_template, request, jsonify, url_for
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
@@ -12,33 +12,27 @@ from sqlalchemy import create_engine
 from dotenv import load_dotenv , find_dotenv
 import boto3
 
-
 env_path = find_dotenv()
 load_dotenv(env_path, override=True)
 
 separator = ("="*80)
 
-
 """
 Flask Transaction Simulator with Real-time Fraud Detection
 Simulates credit card transactions and instantly detects fraud using MLFlow model
 """
-
-
-
-
 # Global model variable
 loaded_model = None
 bucket_name = 'bucket-laposte-david'
 s3_client = boto3.client('s3')
-bucket_name = 'bucket-laposte-david'
+
 
 EXPERIMENT_NAME = "LBPFraudDetector"
 # Configuration
 mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
 mlflow.set_tracking_uri(mlflow_tracking_uri)
         
-#MODEL_URI = os.getenv("MODEL_URI", "runs:/bf781e6a105445afa07d064f8f1f30a3/fraud_detector")
+
 BACKEND_STORE_URI = os.getenv("BACKEND_STORE_URI")
 simulationAPI_URL = os.getenv("API_URL", "https://sdacelo-real-time-fraud-detection.hf.space/current-transactions")
 fast_API_URL = os.getenv("FAST_API_URL", "https://davidrambeau-bloc3-fastapi.hf.space/")
@@ -99,57 +93,35 @@ def getMLFlowLastModel():
 
 
 # Load model at startup
-loaded_model = None
+# loaded_model = None
 
-def load_fraud_model():
-    """Load the fraud detection model from MLFlow"""
-    global loaded_model
-    MODEL_URI = getMLFlowLastModel()
+# def load_fraud_model():
+#     """Load the fraud detection model from MLFlow"""
+#     global loaded_model
+#     MODEL_URI = getMLFlowLastModel()
 
-    print(f"{separator}\n📦 Loading Fraud Detection Model\n{separator}")
-    print(f"Loading model from {MODEL_URI}...")
-    print(f"Experiment Name: {EXPERIMENT_NAME}")
-    print(f"MLFlow Tracking URI: {mlflow.get_tracking_uri()}")
-    print(f"Model Run ID: {MODEL_URI.latest_versions[0].run_id}")
+#     print(f"{separator}\n📦 Loading Fraud Detection Model\n{separator}")
+#     print(f"Loading model from {MODEL_URI}...")
+#     print(f"Experiment Name: {EXPERIMENT_NAME}")
+#     print(f"MLFlow Tracking URI: {mlflow.get_tracking_uri()}")
+#     print(f"Model Run ID: {MODEL_URI.latest_versions[0].run_id}")
    
-    print(separator)
+#     print(separator)
 
-    try:
+#     try:
         
 
-        logged_model = f'runs:/{MODEL_URI.latest_versions[0].run_id}/{EXPERIMENT_NAME}'
-        print(f"Model URI: {logged_model}")
-        loaded_model = mlflow.pyfunc.load_model(logged_model)        
+#         logged_model = f'runs:/{MODEL_URI.latest_versions[0].run_id}/{EXPERIMENT_NAME}'
+#         print(f"Model URI: {logged_model}")
+#         loaded_model = mlflow.pyfunc.load_model(logged_model)        
     
-        print(f"✅ Model loaded successfully from {MODEL_URI}")
-        return True
-    except Exception as e:
-        print(f"❌ Error loading model: {str(e)}")
-        return False
+#         print(f"✅ Model loaded successfully from {MODEL_URI}")
+#         return True
+#     except Exception as e:
+#         print(f"❌ Error loading model: {str(e)}")
+#         return False
 
-# # Transaction categories
-# CATEGORIES = [
-#     'gas_transport', 'grocery_pos', 'home', 'grocery_net', 'shopping_pos',
-#     'misc_pos', 'entertainment', 'food_dining', 'personal_care',
-#     'health_fitness', 'misc_net', 'shopping_net', 'kids_pets', 'travel'
-# ]
 
-# # Sample merchant names
-# MERCHANTS = [
-#     'fraud_Rippin, Kub and Mann', 'fraud_Heller, Gutmann and Zieme',
-#     'fraud_Lind-Buckridge', 'fraud_Kirlin and Sons', 'fraud_Sporer-Keebler',
-#     'fraud_Haley Group', 'fraud_Johnston-Casper', 'fraud_Barrows-Heller'
-# ]
-
-# # Sample US cities with coordinates
-# CITIES = [
-#     {'city': 'New York', 'state': 'NY', 'lat': 40.7128, 'long': -74.0060, 'pop': 8336817},
-#     {'city': 'Los Angeles', 'state': 'CA', 'lat': 34.0522, 'long': -118.2437, 'pop': 3979576},
-#     {'city': 'Chicago', 'state': 'IL', 'lat': 41.8781, 'long': -87.6298, 'pop': 2693976},
-#     {'city': 'Houston', 'state': 'TX', 'lat': 29.7604, 'long': -95.3698, 'pop': 2320268},
-#     {'city': 'Phoenix', 'state': 'AZ', 'lat': 33.4484, 'long': -112.0740, 'pop': 1680992},
-#     {'city': 'Miami', 'state': 'FL', 'lat': 25.7617, 'long': -80.1918, 'pop': 467963},
-# ]
 @app.route('/get_api_data', methods=['GET'])
 def getTransactionFromAPI(API_URL=simulationAPI_URL, s3_client=s3_client, bucket_name=bucket_name):
     """Get transaction from API and return as flat dict"""
@@ -195,9 +167,6 @@ def getTransactionFromAPI(API_URL=simulationAPI_URL, s3_client=s3_client, bucket
         print(f"❌ Erreur API Simulation: status code {r.status_code}")
         return None
     
-
-
-
 def predict_fraud(transaction_dict):
     """Predict if transaction is fraud using FastAPI"""
     global loaded_model
@@ -231,8 +200,6 @@ def predict_fraud(transaction_dict):
         traceback.print_exc()
         return None, f"Error: {str(e)}"
     
-
-
 def save_transaction_to_db(transaction_dict, prediction):
     """Save transaction with prediction to database"""
     if not BACKEND_STORE_URI:
@@ -283,43 +250,20 @@ def save_transaction_to_db(transaction_dict, prediction):
         import traceback
         traceback.print_exc()
         return False, str(e)
-# def sasve_transaction_to_db(transaction_dict, prediction):
-#     """Save transaction with prediction to database"""
-#     if not BACKEND_STORE_URI:
-#         return False, "Database not configured"
-
-#     try:
-#         engine = create_engine(BACKEND_STORE_URI)
-
-#         # Add prediction to transaction
-#         transaction_dict['prediction'] = prediction
-#         transaction_dict['created_at'] = datetime.now()
-
-#         # Convert to DataFrame and save
-#         df = pd.DataFrame([transaction_dict])
-#         df.to_sql('transactions', engine, if_exists='append', index=False)
-
-#         return True, None
-#     except Exception as e:
-#         return False, str(e)
-
-
-
-
 
 @app.route('/health')
 def health():
     """Health check endpoint"""
-    model = getMLFlowLastModel()
+    #model = getMLFlowLastModel()
     return jsonify({
         'status': 'healthy',
-        'model_loaded': model is not None,
-        'model_name': model.name if model else None,
-        'model_version': model.latest_versions[0].version if model else None,
-        'model_runid': model.latest_versions[0].run_id if model else None,
-        'model_ExperimentName': EXPERIMENT_NAME,
-        'model_tags': model.tags if model else None,
-        'mlflow_uri': MLFLOW_TRACKING_URI
+        # 'model_loaded': model is not None,
+        # 'model_name': model.name if model else None,
+        # 'model_version': model.latest_versions[0].version if model else None,
+        # 'model_runid': model.latest_versions[0].run_id if model else None,
+        # 'model_ExperimentName': EXPERIMENT_NAME,
+        # 'model_tags': model.tags if model else None,
+        # 'mlflow_uri': MLFLOW_TRACKING_URI
     })
 
 @app.route('/simulate', methods=['POST'])
@@ -413,78 +357,15 @@ def simulate_transaction():
             'error_code': 'GEN_001'
         }), 500
 
-# @app.route('/simulate/batch', methods=['POST'])
-# def simulate_batch():
-#     """Simulate multiple transactions"""
-#     try:
-#         data = request.get_json() or {}
-#         count = data.get('count', 10)
-#         fraud_rate = data.get('fraud_rate', 0.1)  # 10% fraud by default
-
-#         results = []
-
-#         for _ in range(count):
-#             # Decide if this should be fraud
-#             is_fraud = random.random() < fraud_rate
-
-#             # Generate transaction
-#             transaction = generate_random_transaction(is_fraud=is_fraud)
-
-#             # Predict
-#             prediction, error = predict_fraud(transaction)
-
-#             if error:
-#                 continue
-
-#             # Save to database
-#             save_transaction_to_db(transaction, prediction)
-
-#             results.append({
-#                 'id': transaction['trans_num'],
-#                 'amount': transaction['amt'],
-#                 'category': transaction['category'],
-#                 'actual_fraud': transaction['is_fraud'],
-#                 'predicted_fraud': prediction
-#             })
-
-#         # Calculate accuracy
-#         correct = sum(1 for r in results if r['actual_fraud'] == r['predicted_fraud'])
-#         accuracy = (correct / len(results)) * 100 if results else 0
-
-#         return jsonify({
-#             'success': True,
-#             'count': len(results),
-#             'accuracy': round(accuracy, 2),
-#             'transactions': results
-#         })
-
-#     except Exception as e:
-#         return jsonify({
-#             'success': False,
-#             'error': str(e)
-#         }), 500
-
 
 @app.route('/')
 def index():
     """Main page"""
-    global loaded_model
-    load_fraud_model()
+    #global loaded_model
+    #load_fraud_model()
     return render_template('index.html')
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=7860, debug=True)
 
 
-# @app.route('/')
-# def index():
-#     """Main page"""
-#     return render_template('index.html')
-
-
-# if __name__ == '__main__':
-#     # Load model at startup
-#     load_fraud_model()
-
-#     # Run Flask app
-#     app.run(host='0.0.0.0', port=7860, debug=True)

@@ -77,30 +77,30 @@
 
             resultDiv.innerHTML = `
 
-                                    <h2>Résultat de la transaction</h2>
+                 <h2>Résultat de la prédiction</h2>
                     <div class="transaction-card ${cardClass}">
                         <div style="text-align: center; margin-bottom: 20px;">
                             <span class="fraud-badge ${badgeClass}">${badgeText}</span>
                         </div>
 
                         <div class="detail-row">
-                            <span class="label">Transaction ID:</span>
+                            <span class="label">ID de la transaction:</span>
                             <span class="value">${data.transaction.id}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="label">Amount:</span>
+                            <span class="label">Montant:</span>
                             <span class="value">$${data.transaction.amount.toFixed(2)}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="label">Merchant:</span>
+                            <span class="label">Marchand:</span>
                             <span class="value">${data.transaction.merchant}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="label">Category:</span>
+                            <span class="label">Catégorie:</span>
                             <span class="value">${data.transaction.category}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="label">Location:</span>
+                            <span class="label">Localisation:</span>
                             <span class="value">${data.transaction.city}, ${data.transaction.state}</span>
                         </div>
                         <div class="detail-row">
@@ -108,18 +108,11 @@
                             <span class="value">${data.transaction.date}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="label">Saved to Database:</span>
-                            <span class="value">${data.transaction.saved_to_db ? '✅ Oui' : '❌ Non'}</span>
+                            <span class="label">Sauvegardé:</span>
+                            <span class="value">${data.saved_to_db ? '✅ Oui' : '❌ Non'}</span>
                         </div>
                     </div>
 
-
-
-
-
-
-
-                <h3 style="margin-top: 30px;">Transactions:</h3>
               
             `;
 
@@ -201,25 +194,78 @@
             // Run immediately
             runBatch();
 
-            // Then repeat every 30 seconds
-            setInterval(runBatch, 30000);
+            // Then repeat every 20 seconds
+            setInterval(runBatch, 20000);
         }
 
 
         let isLooping = false;
 
+        // function toggleLoop() {
+        //     const button = document.getElementById('loopTransaction');
+        //     if (isLooping) {
+        //         clearInterval(window.batchInterval);
+        //         isLooping = false;
+        //         button.textContent = '📊 Simuler transactions en continue';
+        //     } else {
+        //         simulateBatch();
+        //         button.textContent = '⏸️ Arrêter les transactions';
+        //     }
+        //     isLooping = !isLooping;
+        
+
+
+        // }
+
+
+
+
+
+
+
+
+
+                let batchInterval;
+
         function toggleLoop() {
             const button = document.getElementById('loopTransaction');
             if (isLooping) {
-                clearInterval(window.batchInterval);
-                button.textContent = '📊 Simuler transactions en continue';
+                clearInterval(batchInterval);
+                isLooping = false;
+                button.textContent = '📊 Simuler des transactions en continu';
             } else {
-                simulateBatch();
+                runBatch();
+                batchInterval = setInterval(runBatch, 20000);
                 button.textContent = '⏸️ Arrêter les transactions';
+                isLooping = true;
             }
-            isLooping = !isLooping;
         }
 
+        async function runBatch() {
+            showLoading();
+            try {
+                const response = await fetch('/simulate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        count: 1,
+                        fraud_rate: 0
+                    })
+                });
+                const data = await response.json();
+                hideLoading();
+                displayResult(data);
+            } catch (error) {
+                hideLoading();
+                displayResult({
+                    success: false,
+                    error: `Network error: ${error.message}`
+                });
+            }
+        }
+        
         document.getElementById('loopTransaction').addEventListener('click', toggleLoop);
 
         // Auto-load on page load
