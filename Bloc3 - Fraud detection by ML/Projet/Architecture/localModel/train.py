@@ -190,8 +190,9 @@ if __name__ == "__main__":
 
     pipelines = {
     "Random Forest": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', RandomForestClassifier())]),
-    "Gradient Boosting": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', GradientBoostingClassifier())]),
-    "Logistic Regression": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression())])
+    #"Gradient Boosting": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', GradientBoostingClassifier())]),
+    "Logistic Regression_100": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression(max_iter=100))]),
+    "Logistic Regression_1000": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression(max_iter=1000))])
     }
 
     modelsResults = {}
@@ -247,14 +248,6 @@ if __name__ == "__main__":
         
         draw_confusion_matrices(model_name, y_train, y_train_pred, y_test, y_test_pred)
         print("✅ Dashboard saved for " + model_name + ".")
-
-
-
-
-
-
-
-
 
         print(separator)
         print("✅ Model training complete!")

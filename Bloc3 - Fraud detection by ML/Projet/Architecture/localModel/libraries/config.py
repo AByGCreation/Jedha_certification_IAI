@@ -4,8 +4,8 @@ import os
 import sys
 import pandas as pd
 
-debug = True  # True for debug mode (smaller dataset, configure size below in : samplingSize var), False for full dataset
-plottingEDA = False # True to enable EDA plotting, False to disable
+debug = False  # True for debug mode (smaller dataset, configure size below in : samplingSize var), False for full dataset
+plottingEDA = True # True to enable EDA plotting, False to disable
 mlFlowLocal = False  # True for local mlflow, False for hosted mlflow
 
 #============================================================================= 
@@ -16,7 +16,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.abspath(os.path.join(current_path, "..", "..")) + "/"
 sys.path.append(os.path.join(project_path, 'lib'))
 
-neonDB_connectionURL = os.getenv('NEON_DB_URL', 'postgresql://neondb_owner:npg_UIrY18vhNmLE@ep-curly-sound-ag9a7x4l-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require')
+neonDB_connectionURL = os.getenv('NEON_DB_URL', '')
 neonDB_fraudTableName = "neondb"
 HF_connectionURL = "https://huggingface.co/spaces/sdacelo/real-time-fraud-detection"
 HF_connectionCSV = "https://lead-program-assets.s3.eu-west-3.amazonaws.com/M05-Projects/fraudTest.csv"
