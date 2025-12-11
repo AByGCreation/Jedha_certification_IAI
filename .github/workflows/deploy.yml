@@ -8,6 +8,15 @@ on:
     #   - production
 
 jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      # Si tests OK → Créer tag
+      - name: Tag validated version
+        if: success()
+        run: |
+          git tag "pushed-v${{ github.run_number }}"
+          git push origin "pushed-v${{ github.run_number }}"
   deploy:
     runs-on: ubuntu-latest
     steps:
@@ -27,13 +36,3 @@ jobs:
               repo_type='space'
           )
           "
-      # Create a new tag for deployment tracking #deployed-$(date +%Y%m%d-%H%M%S)
-      - name: Create deployment tag
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git tag -f "production"
-          git push origin --tags
-
-        # env:
-        #   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
