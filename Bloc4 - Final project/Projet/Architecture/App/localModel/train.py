@@ -94,7 +94,7 @@ print("✅ UDF functions loaded successfully.")
 if __name__ == "__main__":
 
     dfRaw = dataSourceLoader(inputDBFormat)
-    print("✅ Dataframe successfully created from " + inputDBFormat + " format with " + str(len(dfRaw)) + " rows and " + str(len(dfRaw.columns)) + " columns.")
+    #print("✅ Dataframe successfully created from " + inputDBFormat + " format with " + str(len(dfRaw)) + " rows and " + str(len(dfRaw.columns)) + " columns.")
 
     #==EDA Prepa# Select dataset based on debug mode
     if debug:

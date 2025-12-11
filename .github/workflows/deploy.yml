@@ -21,8 +21,55 @@ jobs:
           git tag "pushed-v${{ github.run_number }}"
           git push origin "pushed-v${{ github.run_number }}"
 
+  test:
+    needs: tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest pytest-html pytest-json-report
+          pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
+
+      - name: Run tests with report
+        continue-on-error: true
+        run: |
+          pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
+            --html=test_report.html \
+            --self-contained-html \
+            --json-report \
+            --json-report-file=test_report.json \
+            -v \
+            --tb=short \
+            --junit-xml=test_results.xml
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report
+          path: test_results/test_report.html
+
+      - name: Upload JSON report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report-json
+          path: test_results/test_report.json
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test_results.xml
+          check_name: Test Results
+
   deploy:
-    needs: tag # ← Deploy APRÈS le tag
+    needs: test # ← Deploy APRÈS les tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

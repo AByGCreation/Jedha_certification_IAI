@@ -45,9 +45,6 @@ Schema global du Pipeline
 
 ![pipeline](Dossier/assets/pipeline.png)
 
-
-
-
 #### Dataset utilisé
 
 🔗 [Dataset Hugging Face](https://lead-program-assets.s3.eu-west-3.amazonaws.com/M05-Projects/fraudTest.csv)
@@ -57,7 +54,7 @@ Schema global du Pipeline
 **Comparaison des modèles :**
 
 | Modèle                    | AUC-ROC | Precision | Recall | F1-Score |
-| ------------------------- | ------- | --------- | ------ | -------- | 
+| ------------------------- | ------- | --------- | ------ | -------- |
 | **RandomForest** ⭐       | 1.000   | 100.0%    | 100.0% | 100.0%   |
 | LogisticRegression (100)  | 0.740   | 93.22%    | 100.0% | 96.48%   |
 | LogisticRegression (1000) | 0.730   | 93.75%    | 100.0% | 96.79%   |
@@ -77,7 +74,7 @@ Schema global du Pipeline
 
 | Service   | URL                                           | Description               |
 | --------- | --------------------------------------------- | ------------------------- |
-| Streamlit | https://davidrambeau-bloc3-streamlit.hf.space | Essai de connxion     |
+| Streamlit | https://davidrambeau-bloc3-streamlit.hf.space | Essai de connxion         |
 | FastAPI   | https://davidrambeau-bloc3-fastapi.hf.space   | API de scoring            |
 | MLflow    | https://davidrambeau-bloc3-mlflow.hf.space    | Tracking & model registry |
 | Flask     | https://davidrambeau-bloc3-flask.hf.space     | Interface utilisateur     |
@@ -86,7 +83,6 @@ Schema global du Pipeline
 
 - **NeonDB** : PostgreSQL serverless (métadonnées MLflow)
 - **AWS S3** : bucket-laposte-david (artefacts modèles)
-
 
 ## 📝 Licence
 
@@ -102,7 +98,6 @@ Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de
 - **Email** : david.rambeau@gmail.com
 - **LinkedIn** : https://www.linkedin.com/in/davidrambeau/
 - **GitHub** : https://github.com/AByGCreation
-
 
 **Dernière mise à jour** : Décembre 2025
 **Version** : 1.0.0

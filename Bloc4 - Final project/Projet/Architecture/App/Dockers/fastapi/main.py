@@ -1,33 +1,58 @@
+import sys
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Dict, Any
 from contextlib import asynccontextmanager
 import mlflow
 from mlflow.tracking import MlflowClient
 import pandas as pd
 import os
-from dotenv import load_dotenv , find_dotenv
+from dotenv import load_dotenv, find_dotenv
 from math import radians, cos, sin, asin, sqrt
-import pandas as pd
+from pathlib import Path
+from datetime import datetime
+import warnings
+import traceback
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+#======================================
+# Charger le .env
+#======================================
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.append('./Bloc4 - Final project/Projet/Architecture')
 
 env_path = find_dotenv()
 load_dotenv(env_path, override=True)
 
+dotenv_path = find_dotenv()
+
+# Charger explicitement un .env
+load_dotenv(".env")  # Depuis le répertoire courant
+
+print(f"✅ .env chargé dans main.py")
+print(f"   TesVAr : {os.getenv('MAIL_FROM_NAME')}")
+
 # Global model variable
-model = None
 separator = ("="*80)
 EXPERIMENT_NAME = "LBPFraudDetector"
+
+#======================================
+# Helper functions
+#======================================
 
 def getModelRunID():
     # Récupérer la dernière version du modèle
     client = mlflow.MlflowClient()
 
     models = client.search_registered_models()
-    best_model = sorted(
-        models,
-        key=lambda x: x.creation_timestamp,
-        reverse=True
-    )[0]
+
+    if not models:
+        print("[ERROR] Aucun modèle enregistré dans MLflow Registry")
+        return None
+
+    best_model = sorted(models, key=lambda x: x.creation_timestamp, reverse=True)[0]
     best_model_name = best_model.name
     
     # Print all model information
@@ -40,11 +65,19 @@ def getModelRunID():
     print(f"  Latest Versions: {best_model.latest_versions}")
     print(f"  RunID: {best_model.latest_versions[0].run_id}")
 
+    if not best_model.latest_versions:
+        print("[ERROR] Le modèle n'a aucune version enregistrée")
+        return None
+    
+    print(f"  RunID: {best_model.latest_versions[0].run_id}")
     print(f"[INFO] Latest registered model: {best_model_name}")
 
-    latest = client.get_latest_versions(
-        best_model_name, stages=["None"]
-    )
+    # latest = client.get_latest_versions(
+    #     best_model_name, stages=["None"]
+    # )
+    
+    latest = client.search_model_versions(f"name='{best_model_name}'")
+
     if latest:
         model_version = latest[-1].version
         print(f"[INFO] Model logged as version {model_version}")
@@ -59,44 +92,6 @@ def getModelRunID():
         return best_model#.latest_versions[0].run_id
     else:
         print("[WARN] Aucun modèle trouvé dans le registre.")
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Load model
-    
-    global model
-    try:
-        # Configuration MLFlow avec authentification
-        mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
-        mlflow.set_tracking_uri(mlflow_tracking_uri)
-        
-
-        # Authentification Hugging Face (si nécessaire)
-        # hf_token = os.getenv("HF_TOKEN")
-        # if hf_token:
-        #     os.environ["MLFLOW_TRACKING_TOKEN"] = hf_token
-        #     # Ou utiliser les headers HTTP
-        #     os.environ["MLFLOW_TRACKING_USERNAME"] = "hf_token"
-        #     os.environ["MLFLOW_TRACKING_PASSWORD"] = hf_token
-        
-        # Charger le modèle
-        modelRunID = getModelRunID()
-        print(f"Model runid: {modelRunID.latest_versions[0].run_id}")
-        print(f"Model name: {modelRunID.latest_versions[0].name}")
-
-        logged_model = os.getenv("MODEL_URI", f"runs:/{modelRunID.latest_versions[0].run_id}/{EXPERIMENT_NAME}")
-        model = mlflow.pyfunc.load_model(logged_model)
-        print(f"✅ Model loaded successfully from {logged_model}")
-        
-    except Exception as e:
-        print(f"❌ Error loading model: {str(e)}")
-        # L'API démarre quand même pour permettre le diagnostic
-    
-    yield
-    
-    print("Shutting down...")
-
-app = FastAPI( title="LBFraud Detection API", version="1.0.0",lifespan=lifespan, debug=True )
 
 def Preprocessor(eda_input_dataframe : pd.DataFrame) -> pd.DataFrame:
     """
@@ -185,9 +180,6 @@ def Preprocessor(eda_input_dataframe : pd.DataFrame) -> pd.DataFrame:
     
     return eda_input_dataframe
 
-
-
-
 def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     """
     Calculate the great circle distance between two points 
@@ -221,8 +213,95 @@ def datetimeConverter(df: pd.DataFrame, datetime_columns: list) -> None:
             except Exception as e:
                 print(f"✗ {col}: Failed to convert ({e})")
 
+def getMyMsodel():
+    """Load the MLflow model using the best run ID."""
+    # Configuration MLFlow
+    mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
+                
+    # Charger le modèle
+    modelRunID = getModelRunID()
+
+    if modelRunID is None:
+        print("⚠️ WARNING: Aucun modèle disponible")
+        return None
+    
+    print(f"Model runid: {modelRunID.latest_versions[0].run_id}")
+    print(f"Model name: {modelRunID.latest_versions[0].name}")
+
+    logged_model = os.getenv("MODEL_URI", f"runs:/{modelRunID.latest_versions[0].run_id}/{EXPERIMENT_NAME}")
+    loaded_model = mlflow.pyfunc.load_model(logged_model)
+    print(f"✅ Model loaded successfully from {logged_model}")
+
+    return loaded_model  # ← Retourne le modèle chargé
+
+
+def getMyModel():
+    """Load the MLflow model using the best run ID."""
+    mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
+                
+    modelRunID = getModelRunID()
+
+    if modelRunID is None:
+        print("⚠️ WARNING: Aucun modèle disponible")
+        return None
+    
+    try:
+        run_id = modelRunID.latest_versions[0].run_id
+        model_name = modelRunID.latest_versions[0].name
+        
+        print(f"Model runid: {run_id}")
+        print(f"Model name: {model_name}")
+
+        logged_model = os.getenv("MODEL_URI", f"runs:/{run_id}/{EXPERIMENT_NAME}")
+        print(f"Loading model from: {logged_model}")
+        
+        loaded_model = mlflow.pyfunc.load_model(logged_model)
+        
+        print(f"✅ Model loaded successfully")
+        print(f"✅ Model type: {type(loaded_model)}")
+        print(f"✅ Model dir: {dir(loaded_model)}")
+        print(f"✅ Has predict: {hasattr(loaded_model, 'predict')}")
+
+        return loaded_model
+        
+    except Exception as e:
+        print(f"❌ Error loading PyFunc model: {str(e)}")
+        traceback.print_exc()
+        return None
+#======================================
+# Lifespan context manager
+#======================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gère le cycle de vie de l'application FastAPI, notamment le chargement du modèle MLflow au démarrage."""
+    try:
+        app.state.loaded_model = getMyModel()
+        
+    except Exception as e:
+        print(f"❌ Error loading model: {str(e)}")
+        app.state.loaded_model = None
+    yield
+    
+    print("Shutting down...")
+
+
+
+#======================================
+# FastAPI application setup
+#======================================
+
+app = FastAPI( title="LBFraud Detection API", version="1.0.0",lifespan=lifespan, debug=True )
+
+
+#======================================
+# Pydantic models for request and response validation
+#======================================
 
 class Transaction(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     cc_num: int  # 
     merchant: str
     category: str
@@ -245,8 +324,6 @@ class Transaction(BaseModel):
     is_fraud: int  # 
     current_time: int  #
 
-
-
 class PredictionResponse(BaseModel):
     prediction: int
     is_fraud: bool
@@ -255,25 +332,9 @@ class PredictionResponse(BaseModel):
     category: Optional[str] = None
 
 
-  
-
-# class ExperimentInfo(BaseModel):
-#     experiment_id: str
-#     name: str
-#     artifact_location: str
-#     lifecycle_stage: str
-#     total_runs: int
-#     last_update: Optional[str] = None
-
-# class MLflowTestResponse(BaseModel):
-#     status: str
-#     tracking_uri: str
-#     connection_success: bool
-#     total_experiments: int
-#     experiments: List[ExperimentInfo]
-#     error: Optional[str] = None
-
-
+#======================================
+# API Endpoints
+#======================================
 
 @app.get("/")
 async def root():
@@ -282,11 +343,7 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "/health",
-            "predict": "/predict",
-            "predict_batch": "/predict_batch",
-            "mlflow_test": "/mlflow-test",
-            "mlflow_experiments": "/mlflow-experiments",
-            "mlflow_experiment_detail": "/mlflow-experiment/{experiment_id}"
+            "predict": "/predict"
         }
     }
 
@@ -294,28 +351,68 @@ async def root():
 async def health():
     return {
         "status": "healthy",
-        "model_loaded": model is not None,
+        "model_loaded": getattr(app.state, "loaded_model", None) is not None,
         "mlflow_uri": os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
     }
 
+# @app.post("/predict", response_model=PredictionResponse)
+# async def predict(transaction: Transaction):
+#     """
+#     Make a fraud prediction for a single transaction.
+#     """
 
+#     # Convert Transaction object to DataFrame
+#     trans_dict = pd.DataFrame([transaction.model_dump()])
+#     trans_dict = Preprocessor(trans_dict)
 
+#     print(separator)
+#     print(f"📥 Received transaction for prediction at : {datetime.now().strftime('%H:%M:%S')} ")
+#     print(f"Transaction: {transaction}")
+#     print(separator)
 
-@app.post("/predicst")
-async def receive_data(data: Dict[str, Any]):
-    """
-    Receive data from a POST request.
-    """
-    try:
-        # Process the received data
-        print(f"Received data: {data}")
-        return {"status": "success", "received_data": data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
+#     #loaded_model = getattr(app.state, "loaded_model", None)
 
+#     if app.state.loaded_model is None:
+#         print("❌ Model not loaded.")
+#         raise HTTPException(status_code=503, detail="Model not loaded")
+    
+#     try:
+#         # Convertir en DataFrame
+#         #df = pd.DataFrame([transaction.model_dump()])
+        
+#         print(f"📊 DataFrame shape: {trans_dict.shape}")
+#         print(f"📊 DataFrame columns: {trans_dict.columns.tolist()}")
+#         print(f"📊 Data for prediction: {trans_dict.to_dict(orient='records')}")
+        
+#         # ⚠️ CRITIQUE: Vérifier les colonnes attendues par le modèle
+#         #print(f"📊 Model expected features: {model.feature_names_in_ if hasattr(model, 'feature_names_in_') else 'Unknown'}")
+        
+#         # Prédiction
 
+        
+#         prediction = app.state.loaded_model.predict(trans_dict)
+#         modelRunID = getModelRunID()
 
+#         model_name = modelRunID.name
+#         model_version = modelRunID.latest_versions[0].version
+        
+#         prediction = app.state.loaded_model.predict(trans_dict)
 
+#         print(f"✅ Prediction result with model {model_name} (v{model_version}) : {prediction}")
+        
+#         return PredictionResponse(
+#             prediction=int(prediction[0]),
+#             is_fraud=bool(prediction[0] == 1),
+#             trans_num=transaction.trans_num,
+#             amt=transaction.amt,
+#             category=transaction.category,
+#         )
+        
+#     except Exception as e:
+#         print(f"❌ ERREUR DÉTAILLÉE:")
+#         import traceback
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 
 @app.post("/predict", response_model=PredictionResponse)
@@ -323,40 +420,42 @@ async def predict(transaction: Transaction):
     """
     Make a fraud prediction for a single transaction.
     """
-
     # Convert Transaction object to DataFrame
     trans_dict = pd.DataFrame([transaction.model_dump()])
     trans_dict = Preprocessor(trans_dict)
 
-
-
-
-
     print(separator)
-    print("🔮 Received transaction for prediction.")
-    print(f"Transaction: {transaction}")
-    
-    if model is None:
+    print(f"📥 Received transaction for prediction at : {datetime.now().strftime('%H:%M:%S')} ")
+    print(separator)
+
+    # Safely get loaded model
+    loaded_model = getattr(app.state, "loaded_model", None)
+    if loaded_model is None:
+        print("❌ Model not loaded.")
         raise HTTPException(status_code=503, detail="Model not loaded")
     
+    # Check model type
+    if not hasattr(loaded_model, 'predict'):
+        print(f"❌ Invalid model type: {type(loaded_model)}")
+        raise HTTPException(status_code=500, detail="Model does not have predict method")
+    
     try:
-        # Convertir en DataFrame
-        #df = pd.DataFrame([transaction.model_dump()])
-        
         print(f"📊 DataFrame shape: {trans_dict.shape}")
         print(f"📊 DataFrame columns: {trans_dict.columns.tolist()}")
-        print(f"📊 Data for prediction: {trans_dict.to_dict(orient='records')}")
         
-        # ⚠️ CRITIQUE: Vérifier les colonnes attendues par le modèle
-        #print(f"📊 Model expected features: {model.feature_names_in_ if hasattr(model, 'feature_names_in_') else 'Unknown'}")
+        # Make prediction
+        prediction = loaded_model.predict(trans_dict)
         
-        # Prédiction
-        prediction = model.predict(trans_dict)
-        best_model = getModelRunID()
-        model_name = best_model.name
-        model_version = best_model.latest_versions[0].version
-        
-        print(f"✅ Prediction result with model {model_name} (v{model_version}) : {prediction}")
+        # Get model metadata
+        modelRunID = getModelRunID()
+        if modelRunID is None:
+            model_name = "Unknown"
+            model_version = "Unknown"
+        else:
+            model_name = modelRunID.name
+            model_version = modelRunID.latest_versions[0].version
+
+        print(f"✅ Prediction: {prediction[0]} | Model: {model_name} (v{model_version})")
         
         return PredictionResponse(
             prediction=int(prediction[0]),
@@ -364,13 +463,9 @@ async def predict(transaction: Transaction):
             trans_num=transaction.trans_num,
             amt=transaction.amt,
             category=transaction.category,
-            
-
         )
         
     except Exception as e:
-        print(f"❌ ERREUR DÉTAILLÉE:")
-        import traceback
+        print(f"❌ Prediction error: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
-    
