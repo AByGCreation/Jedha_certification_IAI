@@ -52,14 +52,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-report
-          path: test_results/test_report.html
+          path: /test_results/test_report.html
 
       - name: Upload JSON report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-report-json
-          path: test_results/test_report.json
+          path: /test_results/test_report.json
 
       - name: Publish test results
         if: always()
