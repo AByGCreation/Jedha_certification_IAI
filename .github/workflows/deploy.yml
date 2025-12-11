@@ -4,20 +4,24 @@ on:
   push:
     branches:
       - master
-    # tags:
-    #   - production
 
 jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
-      # Si tests OK → Créer tag
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # ← Récupère tout l'historique Git
+
       - name: Tag validated version
-        if: success()
         run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
           git tag "pushed-v${{ github.run_number }}"
           git push origin "pushed-v${{ github.run_number }}"
+
   deploy:
+    needs: tag # ← Deploy APRÈS le tag
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -25,8 +29,9 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install huggingface_hub
-      # Deploy to Hugging Face Spaces
-      - run: |
+
+      - name: Deploy to Hugging Face Spaces
+        run: |
           python -c "
           from huggingface_hub import HfApi
           api = HfApi(token='${{ secrets.HF_TOKEN }}')

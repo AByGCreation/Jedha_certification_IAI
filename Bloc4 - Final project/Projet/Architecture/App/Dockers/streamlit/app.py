@@ -9,7 +9,7 @@ from dotenv import load_dotenv, find_dotenv
 env_path = find_dotenv()
 load_dotenv(env_path, override=True)
 
-st.set_option('wideMode' , True)
+# st.set_option('wideMode' , True)
 
 st.sidebar.title("📊 Dashboard Suivi des indicateurs qualité")
 st.markdown("""
