@@ -13,7 +13,7 @@ load_dotenv(env_path, override=True)
 st.title("📊 Dashboard Suivi des indicateurs qualité")
 
 # Connexion DB
-conn = psycopg2.connect(os.getenv("NEONDB_CONNECTION_STRING"))
+conn = psycopg2.connect(os.getenv("BACKEND_STORE_URI"))
 
 # KPIs
 col1, col2, col3, col4 = st.columns(4)
