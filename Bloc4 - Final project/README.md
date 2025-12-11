@@ -17,11 +17,15 @@
 
 ### Objectifs
 
-Concevoir et implémenter des architectures de données scalables et performantes pour supporter les solutions d'intelligence artificielle.
+Opérationnaliser le système de détection de fraude bancaire avec une **approche industrielle** :
 
 ### Contenu
 
-
+- ✅ **Tests automatisés multi-niveaux** (unit, integration, smoke)
+- ✅ **CI/CD avec 3 gates de validation** qualité
+- ✅ **Monitoring temps réel** des performances (latence, précision, erreurs)
+- ✅ **Traçabilité complète** des déploiements et décisions
+- ✅ **Stratégie de rollback** rapide en cas d'incident
 
 ### Ressources
 

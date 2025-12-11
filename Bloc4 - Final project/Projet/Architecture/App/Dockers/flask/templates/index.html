@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Bloc 3 - Transaction Simulator</title>
+    <style>
+       
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="height: 60px;">
+                <h1>LBP Simulateur de transaction</h1>
+            </div>
+            <p class="subtitle">Détection de fraude temps-réel avec MLFlow</p>
+        </header>
+
+        <div class="controls">
+            <h2 style="margin-bottom: 20px;">Gestion des paiements</h2>
+            <div class="button-group">
+                <button class="btn-secondary" onclick="simulateTransaction(false)">
+                    💳 Simuler une transaction
+                </button>
+                <!-- <button class="btn-danger" onclick="simulateTransaction(true)">
+                    🚨 Simuler une transaction frauduleuse
+                </button> -->
+                <button class="btn-primary" onclick="simulateBatch()" id="loopTransaction">
+                    📊 Simuler des transactions en continu
+                </button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none; "></div>
+            ⏳ Transaction en cours d'analyse...
+        </div>
+
+        <div id="result" class="result-container"></div>
+    </div>
+
+    <script>
+
+        const currentTime = new Date().toLocaleString();
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').classList.remove('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+
+        function displayResult(data) {
+            const resultDiv = document.getElementById('result');
+            
+            const isFraud = data.prediction.is_fraud;
+            const cardClass = isFraud ? 'fraud-detected' : 'fraud-safe';
+            const badgeClass = isFraud ? 'badge-fraud' : 'badge-safe';
+            const badgeText = isFraud ? '🚨 Fraude détectée' : '✅ Transaction conforme';
+
+            const currentTime = new Date().toLocaleTimeString();
+            if (!data.success) {
+                resultDiv.innerHTML = `
+                    <h2 style="color: #FF4136;">❌ Erreur n°${data.error_code}</h2>
+                    <h3>Heure actuelle: ${currentTime}</h3>
+                    <p>${data.error}</p>
+                    
+                `;
+                resultDiv.classList.add('show');
+                return;
+            }
+
+            resultDiv.innerHTML = `
+
+                 <h2>Résultat de la prédiction</h2>
+                    <div class="transaction-card ${cardClass}">
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <span class="fraud-badge ${badgeClass}">${badgeText}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="label">ID de la transaction:</span>
+                            <span class="value">${data.transaction.id}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Montant:</span>
+                            <span class="value">$${data.transaction.amount.toFixed(2)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Marchand:</span>
+                            <span class="value">${data.transaction.merchant}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Catégorie:</span>
+                            <span class="value">${data.transaction.category}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Localisation:</span>
+                            <span class="value">${data.transaction.city}, ${data.transaction.state}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Date:</span>
+                            <span class="value">${data.transaction.date}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Sauvegardé:</span>
+                            <span class="value">${data.saved_to_db ? '✅ Oui' : '❌ Non'}</span>
+                        </div>
+                    </div>
+
+              
+            `;
+
+            resultDiv.classList.add('show');
+        }
+
+        async function simulateTransaction(forceFraud) {
+            showLoading();
+
+            try {
+                const response = await fetch('/simulate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        force_fraud: forceFraud
+                    })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                console.info('Response data:', data);
+               
+                if (!data.success) {
+                            displayResult({
+                                success: false,
+                                error: data.error || 'Unknown error',
+                                error_code: data.error_code || 'UNKNOWN'
+                            });
+                            return;
+                }
+                if (data.db_warning) {
+                    console.warn('Database warning:', data.db_warning);
+                }  
+                displayResult(data);                              
+
+            } catch (error) {
+                console.error('Network error:', error);
+                hideLoading();
+                displayResult({
+                    success: false,
+                    error: `Network error: ${error.message}`,
+                    error_code: 'NETWORK'
+                });
+            }
+        }
+
+        async function simulateBatch() {
+            const runBatch = async () => {
+            showLoading();
+
+            try {
+                const response = await fetch('/simulate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    count: 1,
+                    fraud_rate: 0
+                })
+                });
+
+                const data = await response.json();
+                hideLoading();
+                displayResult(data);
+
+            } catch (error) {
+                hideLoading();
+                displayResult({
+                success: false,
+                error: `Network error: ${error.message}`
+                });
+            }
+            };
+
+            // Run immediately
+            runBatch();
+
+            // Then repeat every 20 seconds
+            setInterval(runBatch, 20000);
+        }
+
+
+        let isLooping = false;
+
+        // function toggleLoop() {
+        //     const button = document.getElementById('loopTransaction');
+        //     if (isLooping) {
+        //         clearInterval(window.batchInterval);
+        //         isLooping = false;
+        //         button.textContent = '📊 Simuler transactions en continue';
+        //     } else {
+        //         simulateBatch();
+        //         button.textContent = '⏸️ Arrêter les transactions';
+        //     }
+        //     isLooping = !isLooping;
+        
+
+
+        // }
+
+
+
+
+
+
+
+
+
+                let batchInterval;
+
+        function toggleLoop() {
+            const button = document.getElementById('loopTransaction');
+            if (isLooping) {
+                clearInterval(batchInterval);
+                isLooping = false;
+                button.textContent = '📊 Simuler des transactions en continu';
+            } else {
+                runBatch();
+                batchInterval = setInterval(runBatch, 20000);
+                button.textContent = '⏸️ Arrêter les transactions';
+                isLooping = true;
+            }
+        }
+
+        async function runBatch() {
+            showLoading();
+            try {
+                const response = await fetch('/simulate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        count: 1,
+                        fraud_rate: 0
+                    })
+                });
+                const data = await response.json();
+                hideLoading();
+                displayResult(data);
+            } catch (error) {
+                hideLoading();
+                displayResult({
+                    success: false,
+                    error: `Network error: ${error.message}`
+                });
+            }
+        }
+        
+        document.getElementById('loopTransaction').addEventListener('click', toggleLoop);
+
+        // Auto-load on page load
+        window.addEventListener('load', function() {
+            console.log('Transaction Simulator Ready');
+        });
+    </script>
+</body>
+</html>
