@@ -2,7 +2,7 @@ name: Automatic Deployement to huggingface_hub
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   deploy:
