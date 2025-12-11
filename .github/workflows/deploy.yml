@@ -30,6 +30,9 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Create test results directory
+        run: mkdir -p "Bloc4 - Final project/Projet/Architecture/Tests/test_results"
+
       - name: Install test dependencies
         run: |
           pip install pytest pytest-html pytest-json-report
@@ -39,37 +42,37 @@ jobs:
         continue-on-error: true
         run: |
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
-            --html=test_report.html \
+            --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.html" \
             --self-contained-html \
             --json-report \
-            --json-report-file=test_report.json \
+            --json-report-file="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.json" \
             -v \
             --tb=short \
-            --junit-xml=test_results.xml
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_results.xml"
 
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-report
-          path: /test_results/test_report.html
+          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.html"
 
       - name: Upload JSON report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-report-json
-          path: /test_results/test_report.json
+          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.json"
 
       - name: Publish test results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: test_results.xml
+          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_results.xml"
           check_name: Test Results
 
   deploy:
-    needs: test # ← Deploy APRÈS les tests
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
