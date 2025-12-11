@@ -1,10 +1,8 @@
-name: Automatic Deployement to huggingface_hub
+name: Automatic deployment to huggingface_hub
 
 on:
   push:
-    tags:
-      - "production"
-
+    branches: master
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -14,6 +12,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install huggingface_hub
+      # Deploy to Hugging Face Spaces
       - run: |
           python -c "
           from huggingface_hub import HfApi
@@ -24,3 +23,10 @@ jobs:
               repo_type='space'
           )
           "
+      # Create a new tag for deployment tracking
+      - name: Create deployment tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -f "deployed-$(date +%Y%m%d-%H%M%S)"
+          git push origin --tags
