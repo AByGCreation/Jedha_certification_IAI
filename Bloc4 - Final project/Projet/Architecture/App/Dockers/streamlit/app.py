@@ -11,11 +11,11 @@ load_dotenv(env_path, override=True)
 
 
 st.title("📊 Dashboard Suivi des indicateurs qualité")
-st.markdown("""
-Ce dashboard présente les indicateurs clés de performance (KPI) des tests automatisés
-exécutés sur le modèle de détection de fraude. Il permet de suivre la qualité du modèle
-au fil du temps et d'identifier rapidement les éventuels problèmes.
-""")
+# st.markdown("""
+# Ce dashboard présente les indicateurs clés de performance (KPI) des tests automatisés
+# exécutés sur le modèle de détection de fraude. Il permet de suivre la qualité du modèle
+# au fil du temps et d'identifier rapidement les éventuels problèmes.
+# """)
 
 # Connexion DB
 conn = psycopg2.connect(os.getenv("BACKEND_STORE_URI"))
