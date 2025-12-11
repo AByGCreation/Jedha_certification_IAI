@@ -33,43 +33,51 @@ jobs:
       - name: Create test results directory
         run: mkdir -p "Bloc4 - Final project/Projet/Architecture/Tests/test_results"
 
+      - name: Generate timestamp
+        id: timestamp
+        run: echo "date=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_OUTPUT
+
       - name: Install test dependencies
         run: |
-          pip install pytest pytest-html pytest-json-report
+          pip install pytest pytest-html pytest-json-report httpx
           pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
 
       - name: Run tests with report
         continue-on-error: true
         run: |
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
-            --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.html" \
+            --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report_${{ steps.timestamp.outputs.date }}.html" \
             --self-contained-html \
             --json-report \
-            --json-report-file="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.json" \
+            --json-report-file="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report_${{ steps.timestamp.outputs.date }}.json" \
             -v \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_results.xml"
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_results_${{ steps.timestamp.outputs.date }}.xml"
 
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report
-          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.html"
+          name: test-report-${{ steps.timestamp.outputs.date }}
+          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report_${{ steps.timestamp.outputs.date }}.html"
+          retention-days: 30
 
       - name: Upload JSON report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-json
-          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report.json"
+          name: test-report-json-${{ steps.timestamp.outputs.date }}
+          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_report_${{ steps.timestamp.outputs.date }}.json"
+          retention-days: 30
 
       - name: Publish test results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_results.xml"
-          check_name: Test Results
+          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_results_${{ steps.timestamp.outputs.date }}.xml"
+          check_name: "Test Results - ${{ steps.timestamp.outputs.date }}"
+          comment_title: "Test Report"
+          fail_on: "test"
 
   deploy:
     needs: test
