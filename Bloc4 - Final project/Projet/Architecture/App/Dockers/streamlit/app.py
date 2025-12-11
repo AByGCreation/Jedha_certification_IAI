@@ -10,7 +10,7 @@ env_path = find_dotenv()
 load_dotenv(env_path, override=True)
 
 
-st.title("📊 Dashboard Qualité des Tests")
+st.title("📊 Dashboard Suivi des indicateurs qualité")
 
 # Connexion DB
 conn = psycopg2.connect(os.getenv("NEONDB_CONNECTION_STRING"))
