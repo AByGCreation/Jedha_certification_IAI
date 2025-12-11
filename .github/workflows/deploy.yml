@@ -23,10 +23,10 @@ jobs:
               repo_type='space'
           )
           "
-      # Create a new tag for deployment tracking
+      # Create a new tag for deployment tracking #deployed-$(date +%Y%m%d-%H%M%S)
       - name: Create deployment tag
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git tag -f "deployed-$(date +%Y%m%d-%H%M%S)"
+          git tag -f "production"
           git push origin --tags
