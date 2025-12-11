@@ -19,5 +19,7 @@ RUN pip install -r /dependencies/requirements.txt
 
 # Environment variables will be passed at runtime via docker run -e flags
 # No need to set them here in the Dockerfile
+# Expose port
+EXPOSE 7860
 
-CMD streamlit run app.py
+CMD streamlit run app.py --server.port 7860 
