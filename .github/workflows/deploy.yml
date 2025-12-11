@@ -2,7 +2,8 @@ name: Automatic Deployement to huggingface_hub
 
 on:
   push:
-    branches: [master]
+    tags:
+      - "production"
 
 jobs:
   deploy:
@@ -18,7 +19,7 @@ jobs:
           from huggingface_hub import HfApi
           api = HfApi(token='${{ secrets.HF_TOKEN }}')
           api.upload_folder(
-              folder_path='.',
+              folder_path='./Bloc4 - Final project/Projet/Architecture/App/Dockers/streamlit',
               repo_id='DavidRambeau/bloc3_Streamlit',
               repo_type='space'
           )
