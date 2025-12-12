@@ -33,7 +33,6 @@ jobs:
       - name: Create test results directory
         run: mkdir -p "Bloc4 - Final project/Projet/Architecture/Tests/test_results"
 
-      # ✅ INSTALLER LES DÉPENDANCES EN PREMIER
       - name: Install dependencies
         run: |
           pip install --upgrade pip
@@ -42,37 +41,35 @@ jobs:
           pip install mlflow scikit-learn pandas numpy
           pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
 
-      # ✅ PUIS DEBUG
       - name: Debug environment
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
           echo "🔍 Environment check:"
-          echo "MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:0:50}..."
+          echo "MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI != '' && 'SET' || 'NOT SET' }}"
           echo "HF_TOKEN set: ${{ secrets.HF_TOKEN != '' }}"
           echo "NEONDB set: ${{ secrets.NEONDB_CONNECTION_STRING != '' }}"
+          echo "AWS_ACCESS_KEY_ID set: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
+          echo "AWS_SECRET_ACCESS_KEY set: ${{ secrets.AWS_SECRET_ACCESS_KEY != '' }}"
+          echo "AWS_DEFAULT_REGION set: ${{ secrets.AWS_DEFAULT_REGION != '' }}"
           python -c "import mlflow; print(f'MLflow version: {mlflow.__version__}')"
+          python -c "import boto3; print(f'Boto3 version: {boto3.__version__}')"
           python -c "import sys; print(f'Python: {sys.version}')"
 
-      # ✅ VÉRIFIER LES CREDENTIALS AWS
       - name: Verify AWS credentials
-        continue-on-error: false
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
         run: |
+          export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          export AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}"
+
           echo "🔑 AWS Credentials check:"
           echo "AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:10}***"
           echo "AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:0:10}***"
           echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
 
-          # Test avec boto3
           python -c "
           import boto3
           import os
           print(f'Boto3 version: {boto3.__version__}')
-          print(f'AWS credentials set: {os.getenv(\"AWS_ACCESS_KEY_ID\") is not None}')
+          print(f'AWS_ACCESS_KEY_ID in env: {os.getenv(\"AWS_ACCESS_KEY_ID\") is not None}')
           try:
               s3 = boto3.client('s3')
               print('✅ S3 client created successfully')
@@ -84,13 +81,22 @@ jobs:
         id: timestamp
         run: echo "date=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_OUTPUT
 
-      # ✅ PUIS TESTS
       - name: Run unit tests
         continue-on-error: true
-        env:
-          NEONDB_CONNECTION_STRING: ${{ secrets.NEONDB_CONNECTION_STRING }}
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
+          # Export ALL environment variables
+          export NEONDB_CONNECTION_STRING="${{ secrets.NEONDB_CONNECTION_STRING }}"
+          export MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}"
+          export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          export AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}"
+
+          # Debug: Verify exports
+          echo "🔍 Unit tests - Variables check:"
+          echo "AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:10}***"
+          echo "MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:0:30}..."
+
+          # Run tests
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_report_${{ steps.timestamp.outputs.date }}.html" \
             --self-contained-html \
@@ -100,16 +106,57 @@ jobs:
 
       - name: Run integration tests
         continue-on-error: true
-        env:
-          NEONDB_CONNECTION_STRING: ${{ secrets.NEONDB_CONNECTION_STRING }}
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
+          # Export ALL environment variables
+          export NEONDB_CONNECTION_STRING="${{ secrets.NEONDB_CONNECTION_STRING }}"
+          export MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}"
+          export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          export AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}"
+
+          # Debug
+          echo "🔍 Integration tests - Variables check:"
+          echo "AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:10}***"
+
+          # Run tests
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_report_${{ steps.timestamp.outputs.date }}.html" \
             --self-contained-html \
             -v -s \
             --tb=short \
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
+
+      - name: List generated test files
+        if: always()
+        run: |
+          echo "📂 Test results directory contents:"
+          ls -lah "Bloc4 - Final project/Projet/Architecture/Tests/test_results/" || echo "Directory is empty"
+
+      - name: Upload all test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ steps.timestamp.outputs.date }}
+          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/"
+          retention-days: 30
+
+      - name: Publish unit test results
+        if: always() && hashFiles('Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_*.xml') != ''
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_*.xml"
+          check_name: "Unit Test Results"
+          comment_title: "Unit Tests"
+          fail_on: "nothing"
+
+      - name: Publish integration test results
+        if: always() && hashFiles('Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_*.xml') != ''
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_*.xml"
+          check_name: "Integration Test Results"
+          comment_title: "Integration Tests"
+          fail_on: "nothing"
 
   deployment:
     needs: implementing_tests
