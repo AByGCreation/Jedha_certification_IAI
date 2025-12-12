@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - master
-
+    paths:
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/**"
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/streamlit/**"
 jobs:
   putting_tag:
     runs-on: ubuntu-latest
@@ -163,12 +165,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+
+      - name: Setup Python 3.10 for Streamlit
+        if: contains(github.event.head_commit.modified, 'streamlit')
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - run: pip install huggingface_hub
+
+      - name: Install dependencies for Streamlit
+        if: contains(github.event.head_commit.modified, 'streamlit')
+        run: pip install huggingface_hub
 
       - name: Deploy Streamlit to Hugging Face Spaces
+        if: contains(github.event.head_commit.modified, 'streamlit')
         run: |
           python -c "
           from huggingface_hub import HfApi
@@ -179,7 +188,19 @@ jobs:
               repo_type='space'
           )
           "
+
+      - name: Setup Python 3.12 for FastAPI
+        if: contains(github.event.head_commit.modified, 'fastapi')
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies for FastAPI
+        if: contains(github.event.head_commit.modified, 'fastapi')
+        run: pip install huggingface_hub
+
       - name: Deploy FastAPI to Hugging Face Spaces
+        if: contains(github.event.head_commit.modified, 'fastapi')
         run: |
           python -c "
           from huggingface_hub import HfApi
@@ -189,4 +210,3 @@ jobs:
               repo_id='DavidRambeau/bloc3_FastAPI',
               repo_type='space'
           )
-          "
