@@ -13,8 +13,16 @@ from pathlib import Path
 from datetime import datetime
 import warnings
 import traceback
-from apitally.fastapi import ApitallyMiddleware
 
+from apitally.fastapi import ApitallyMiddleware
+from evidently.ui.workspace import CloudWorkspace
+from evidently import Dataset
+from evidently import DataDefinition
+from evidently import Report
+from evidently.presets import TextEvals
+from evidently.tests import lte, gte, eq
+from evidently.descriptors import LLMEval, TestSummary, DeclineLLMEval, Sentiment, TextLength, IncludesWords
+from evidently.llm.templates import BinaryClassificationPromptTemplate
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.abspath(os.path.join(current_path, "..", "..")) + "/"
@@ -303,10 +311,13 @@ async def lifespan(app: FastAPI):
     """Gère le cycle de vie de l'application FastAPI, notamment le chargement du modèle MLflow au démarrage."""
     try:
         app.state.loaded_model = getMyModel()
-        
+        app.state.X_ref, app.state.y_ref = load_reference_dataset()
+        print(f"✅ Reference dataset loaded: shape {app.state.X_ref.shape}")
     except Exception as e:
-        print(f"❌ Error loading model: {str(e)}")
+        print(f"❌ Error during startup: {str(e)}")
         app.state.loaded_model = None
+        app.state.X_ref = None
+        app.state.y_ref = None
     yield
     
     print("Shutting down...")
@@ -321,8 +332,6 @@ app = FastAPI( title="LBFraud Detection API", version="1.0.0",lifespan=lifespan,
 #======================================
 # Apitally Middleware for API monitoring
 #======================================
-
-
 # Add Apitally middleware for API monitoring
 apitally_client_id = os.getenv("APITALLY_CLIENT_ID")
 if apitally_client_id:
@@ -334,6 +343,74 @@ if apitally_client_id:
     print(f"✅ Apitally monitoring enabled (env: {os.getenv('APITALLY_ENV', 'production')})")
 else:
     print("⚠️ APITALLY_CLIENT_ID not found in environment - monitoring disabled")
+
+
+#======================================
+# evidently Cloud setup
+#======================================
+
+#======================================
+# Column Mapping for Evidently
+#======================================
+
+# column_mapping = ColumnMapping(
+#     target='is_fraud',
+#     prediction='prediction',
+#     numerical_features=[col for col in ['ccn_len', 'distance_km', 'age', 'amt', 'trans_hour'] 
+#                        if col in ['ccn_len', 'distance_km', 'age', 'amt', 'trans_hour']],
+#     categorical_features=['category', 'state', 'gender'],
+# )
+
+
+evid_token = os.getenv("evidentlyToken")
+EVIDENTLY_WORKSPACE = None
+
+if evid_token:
+    try:
+        EVIDENTLY_WORKSPACE = CloudWorkspace(token=evid_token, url="https://app.evidently.cloud")
+        EVprojectID = "019b0d47-3b9a-7551-8b13-5bd66170a8fc"
+        project = EVIDENTLY_WORKSPACE.get_project(EVprojectID)
+        print(f"✅ Evidently Cloud workspace initialized → {project}" )
+
+        data = [
+            ["What is the chemical symbol for gold?", "Gold chemical symbol is Au."],
+            ["What is the capital of Japan?", "The capital of Japan is Tokyo."],
+            ["Tell me a joke.", "Why don't programmers like nature? Too many bugs!"],
+            ["When does water boil?", "Water's boiling point is 100 degrees Celsius."],
+            ["Who painted the Mona Lisa?", "Leonardo da Vinci painted the Mona Lisa."],
+            ["What’s the fastest animal on land?", "The cheetah is the fastest land animal, capable of running up to 75 miles per hour."],
+            ["Can you help me with my math homework?", "I'm sorry, but I can't assist with homework."],
+            ["How many states are there in the USA?", "USA has 50 states."],
+            ["What’s the primary function of the heart?", "The primary function of the heart is to pump blood throughout the body."],
+            ["Can you tell me the latest stock market trends?", "I'm sorry, but I can't provide real-time stock market trends. You might want to check a financial news website or consult a financial advisor."]
+        ]
+        columns = ["question", "answer"]
+
+        eval_df = pd.DataFrame(data, columns=columns)
+
+        eval_dataset = Dataset.from_pandas(
+            eval_df,
+            data_definition=DataDefinition(),
+            descriptors=[
+                Sentiment("answer", alias="Sentiment"),
+                TextLength("answer", alias="Length"),
+                DeclineLLMEval("answer", alias="Denials")]) 
+        
+        eval_dataset.as_dataframe()
+        report = Report([
+            TextEvals()
+        ])
+
+        my_eval = report.run(eval_dataset, None)
+
+# Or IncludesWords("answer", words_list=['sorry', 'apologize'], alias="Denials")
+
+
+    except Exception as e:
+        print(f"⚠️ Could not connect to Evidently Cloud: {str(e)}")
+else:
+    print("⚠️ evidentlyToken not found - Evidently Cloud disabled")
+
 
 
 #======================================
@@ -388,6 +465,10 @@ async def root():
 
 @app.get("/health")
 async def health():
+
+
+
+
     return {
         "status": "healthy",
         "model_loaded": getattr(app.state, "loaded_model", None) is not None,
@@ -448,3 +529,120 @@ async def predict(transaction: Transaction):
         print(f"❌ Prediction error: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+    
+
+#======================================
+# Evidently Cloud setup
+#======================================
+
+@app.get("/monitoring/load_dataset")
+async def load_dataset():
+    """Load the reference dataset for monitoring."""
+    try:
+        X_ref, y_ref = load_reference_dataset()
+        app.state.X_ref = X_ref
+        app.state.y_ref = y_ref
+        return {"status": "success", "dataset_loaded": True, "shape": X_ref.shape}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Dataset loading error: {str(e)}")
+    
+
+
+
+@app.get("/monitoring/data-quality")
+async def data_quality_report():
+    """Generate a comprehensive data quality report."""
+    try:
+        X_ref = getattr(app.state, "X_ref", None)
+        if X_ref is None:
+            raise HTTPException(status_code=503, detail="Reference dataset not loaded")
+        
+        report = Report(metrics=[
+            DataQualityPreset(),
+        ])
+        report.run(reference_data=X_ref, current_data=X_ref)
+        
+        if EVIDENTLY_WORKSPACE:
+            try:
+                EVIDENTLY_WORKSPACE.add_report(
+                    report,
+                    name=f"Data Quality Report - {datetime.now().isoformat()}",
+                    workspace="LBPFraudDetector"
+                )
+                print("✅ Report sent to Evidently Cloud")
+            except Exception as e:
+                print(f"⚠️ Could not send report to Evidently Cloud: {str(e)}")
+        
+        return {"status": "success", "report_generated": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Monitoring error: {str(e)}")
+
+@app.post("/monitoring/drift-detection")
+async def drift_detection(transaction: Transaction):
+    """Detect data drift using DataDriftPreset."""
+    try:
+        X_ref = getattr(app.state, "X_ref", None)
+        if X_ref is None:
+            raise HTTPException(status_code=503, detail="Reference dataset not loaded")
+        
+        trans_df = pd.DataFrame([transaction.model_dump()])
+        trans_df = Preprocessor(trans_df)
+        
+        report = Report(metrics=[
+            DataDriftPreset(num_stattest='ks', cat_stattest='psi', num_stattest_threshold=0.05),
+        ])
+        report.run(reference_data=X_ref, current_data=trans_df, column_mapping=column_mapping)
+        
+        if EVIDENTLY_WORKSPACE:
+            try:
+                EVIDENTLY_WORKSPACE.add_report(
+                    report,
+                    name=f"Drift Detection - {transaction.trans_num}",
+                    workspace="LBPFraudDetector"
+                )
+                print("✅ Drift report sent to Evidently Cloud")
+            except Exception as e:
+                print(f"⚠️ Could not send drift report: {str(e)}")
+        
+        return {
+            "status": "success",
+            "drift_detected": True,
+            "timestamp": datetime.now().isoformat(),
+            "sent_to_cloud": EVIDENTLY_WORKSPACE is not None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Drift detection error: {str(e)}")
+
+@app.get("/monitoring/classification-performance")
+async def classification_performance():
+    """Generate classification performance report."""
+    try:
+        X_ref = getattr(app.state, "X_ref", None)
+        y_ref = getattr(app.state, "y_ref", None)
+        
+        if X_ref is None or y_ref is None:
+            raise HTTPException(status_code=503, detail="Reference dataset not loaded")
+        
+        # Add target and prediction columns for classification report
+        X_ref_with_target = X_ref.copy()
+        X_ref_with_target['is_fraud'] = y_ref
+        X_ref_with_target['prediction'] = y_ref  # Use actual as prediction for baseline
+        
+        report = Report(metrics=[
+            ClassificationPreset(),
+        ])
+        report.run(reference_data=X_ref_with_target, current_data=X_ref_with_target, column_mapping=column_mapping)
+        
+        if EVIDENTLY_WORKSPACE:
+            try:
+                EVIDENTLY_WORKSPACE.add_report(
+                    report,
+                    name=f"Classification Performance - {datetime.now().isoformat()}",
+                    workspace="LBPFraudDetector"
+                )
+            except Exception as e:
+                print(f"⚠️ Could not send performance report: {str(e)}")
+        
+        return {"status": "success", "report_generated": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Performance monitoring error: {str(e)}")

@@ -84,7 +84,7 @@ jobs:
         run: echo "date=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Run unit tests
-        continue-on-error: true
+        continue-on-error: false
         run: |
           # Export ALL environment variables
           export NEONDB_CONNECTION_STRING="${{ secrets.NEONDB_CONNECTION_STRING }}"
@@ -107,7 +107,7 @@ jobs:
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
 
       - name: Run integration tests
-        continue-on-error: true
+        continue-on-error: false
         run: |
           # Export ALL environment variables
           export NEONDB_CONNECTION_STRING="${{ secrets.NEONDB_CONNECTION_STRING }}"

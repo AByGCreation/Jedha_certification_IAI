@@ -10,7 +10,10 @@ env_path = find_dotenv()
 load_dotenv(env_path, override=True)
 
 # st.set_option('wideMode' , True)
-
+st.set_page_config(
+    page_title="Dashboard Suivi des indicateurs qualité",
+    layout="wide"
+)
 st.sidebar.title("📊 Dashboard Suivi des indicateurs qualité")
 st.markdown("""
 Ce dashboard présente les indicateurs clés de performance (KPI) des tests automatisés
