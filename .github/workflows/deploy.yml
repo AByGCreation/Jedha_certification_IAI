@@ -168,7 +168,7 @@ jobs:
           python-version: "3.10"
       - run: pip install huggingface_hub
 
-      - name: Deploy to Hugging Face Spaces
+      - name: Deploy Streamlit to Hugging Face Spaces
         run: |
           python -c "
           from huggingface_hub import HfApi
@@ -176,6 +176,17 @@ jobs:
           api.upload_folder(
               folder_path='./Bloc4 - Final project/Projet/Architecture/App/Dockers/streamlit',
               repo_id='DavidRambeau/bloc3_Streamlit',
+              repo_type='space'
+          )
+          "
+      - name: Deploy FastAPI to Hugging Face Spaces
+        run: |
+          python -c "
+          from huggingface_hub import HfApi
+          api = HfApi(token='${{ secrets.HF_TOKEN }}')
+          api.upload_folder(
+              folder_path='./Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi',
+              repo_id='DavidRambeau/bloc3_FastAPI',
               repo_type='space'
           )
           "

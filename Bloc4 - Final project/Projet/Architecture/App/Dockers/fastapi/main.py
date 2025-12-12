@@ -13,6 +13,7 @@ from pathlib import Path
 from datetime import datetime
 import warnings
 import traceback
+from apitally.fastapi import ApitallyMiddleware
 
 
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -316,6 +317,23 @@ async def lifespan(app: FastAPI):
 #======================================
 
 app = FastAPI( title="LBFraud Detection API", version="1.0.0",lifespan=lifespan, debug=True )
+
+#======================================
+# Apitally Middleware for API monitoring
+#======================================
+
+
+# Add Apitally middleware for API monitoring
+apitally_client_id = os.getenv("APITALLY_CLIENT_ID")
+if apitally_client_id:
+    app.add_middleware(
+        ApitallyMiddleware,
+        client_id=apitally_client_id,
+        env=os.getenv("APITALLY_ENV", "production"),
+    )
+    print(f"✅ Apitally monitoring enabled (env: {os.getenv('APITALLY_ENV', 'production')})")
+else:
+    print("⚠️ APITALLY_CLIENT_ID not found in environment - monitoring disabled")
 
 
 #======================================
