@@ -53,6 +53,32 @@ jobs:
           python -c "import mlflow; print(f'MLflow version: {mlflow.__version__}')"
           python -c "import sys; print(f'Python: {sys.version}')"
 
+      # ✅ VÉRIFIER LES CREDENTIALS AWS
+      - name: Verify AWS credentials
+        continue-on-error: false
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        run: |
+          echo "🔑 AWS Credentials check:"
+          echo "AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:10}***"
+          echo "AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:0:10}***"
+          echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
+
+          # Test avec boto3
+          python -c "
+          import boto3
+          import os
+          print(f'Boto3 version: {boto3.__version__}')
+          print(f'AWS credentials set: {os.getenv(\"AWS_ACCESS_KEY_ID\") is not None}')
+          try:
+              s3 = boto3.client('s3')
+              print('✅ S3 client created successfully')
+          except Exception as e:
+              print(f'❌ S3 client error: {e}')
+          "
+
       - name: Generate timestamp
         id: timestamp
         run: echo "date=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_OUTPUT
