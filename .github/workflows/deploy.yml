@@ -21,7 +21,7 @@ jobs:
           git tag "pushed-v${{ github.run_number }}"
           git push origin "pushed-v${{ github.run_number }}"
 
-  test:
+  tests:
     needs: tag
     runs-on: ubuntu-latest
     steps:
@@ -39,11 +39,13 @@ jobs:
 
       - name: Install test dependencies
         run: |
-          pip install pytest pytest-html pytest-json-report httpx
+          pip install pytest pytest-html pytest-json-report httpx psycopg2-binary
           pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
 
-      - name: Run unit tests with report
+      - name: Run unit tests with database logging
         continue-on-error: true
+        env:
+          NEONDB_CONNECTION_STRING: ${{ secrets.NEONDB_CONNECTION_STRING }}
         run: |
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_report_${{ steps.timestamp.outputs.date }}.html" \
@@ -54,8 +56,10 @@ jobs:
             --tb=short \
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml"
 
-      - name: Run integration test with report
+      - name: Run integration tests with database logging
         continue-on-error: true
+        env:
+          NEONDB_CONNECTION_STRING: ${{ secrets.NEONDB_CONNECTION_STRING }}
         run: |
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_report_${{ steps.timestamp.outputs.date }}.html" \
@@ -105,7 +109,7 @@ jobs:
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_results_${{ steps.timestamp.outputs.date }}.xml"
 
   deploy:
-    needs: test
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
