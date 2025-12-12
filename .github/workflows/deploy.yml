@@ -5,8 +5,14 @@ on:
     branches:
       - master
     paths:
-      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/**"
-      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/streamlit/**"
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/**/*.py"
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/**/requirements.txt"
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/**/Dockerfile"
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/streamlit/**/*.py"
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/streamlit/**/requirements.txt"
+      - "Bloc4 - Final project/Projet/Architecture/App/Dockers/streamlit/**/Dockerfile"
+      - "Bloc4 - Final project/Projet/Architecture/Tests/**"
+      - ".github/workflows/deploy.yml"
 jobs:
   putting_tag:
     runs-on: ubuntu-latest
@@ -104,7 +110,7 @@ jobs:
             --self-contained-html \
             -v -s \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml" 
 
       - name: Run integration tests
         continue-on-error: false
@@ -126,7 +132,7 @@ jobs:
             --self-contained-html \
             -v -s \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml" 
 
       - name: List generated test files
         if: always()
