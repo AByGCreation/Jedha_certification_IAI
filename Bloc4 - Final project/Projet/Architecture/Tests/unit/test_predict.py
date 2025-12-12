@@ -210,3 +210,42 @@ def test_predict_returns_prediction():
     # data = response.json()
     # assert response.status_code == 200
     # assert "prediction" in data
+
+
+class TestPredict:
+    """Test predict endpoint"""
+    
+    def test_predict_returns_prediction(self, require_model):
+        """Test that predict endpoint returns a prediction"""
+        from fastapi.testclient import TestClient
+        from App.Dockers.fastapi.main import app
+        
+        client = TestClient(app)
+        
+        response = client.post("/predict", json={
+            "cc_num": 1234567890123456,
+            "merchant": "test",
+            "category": "test",
+            "amt": 100.0,
+            "first": "John",
+            "last": "Doe",
+            "gender": "M",
+            "street": "123 Main",
+            "city": "NYC",
+            "state": "NY",
+            "zip": 10001,
+            "lat": 40.7128,
+            "long": -74.0060,
+            "city_pop": 8000000,
+            "job": "Engineer",
+            "dob": "1990-01-01",
+            "trans_num": "tx_001",
+            "merch_lat": 40.7128,
+            "merch_long": -74.0060,
+            "is_fraud": 0,
+            "current_time": 1702396800
+        })
+        
+        assert response.status_code == 200
+        assert "prediction" in response.json()
+        assert "is_fraud" in response.json()
