@@ -112,8 +112,33 @@ jobs:
             --tb=short \
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml" 
 
+      - name: Start FastAPI app in background
+        run: |
+          # Export environment variables for FastAPI
+          export NEONDB_CONNECTION_STRING="${{ secrets.NEONDB_CONNECTION_STRING }}"
+          export MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}"
+          export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          export AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}"
+
+          # Start FastAPI in background
+          cd "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi"
+          python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          FASTAPI_PID=$!
+          echo "FASTAPI_PID=$FASTAPI_PID" >> $GITHUB_ENV
+
+          # Wait for FastAPI to be ready
+          echo "⏳ Waiting for FastAPI to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ FastAPI is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
       - name: Run integration tests
-        continue-on-error: false
         run: |
           # Export ALL environment variables
           export NEONDB_CONNECTION_STRING="${{ secrets.NEONDB_CONNECTION_STRING }}"
@@ -121,10 +146,12 @@ jobs:
           export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
           export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
           export AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}"
+          export FASTAPI_BASE_URL="http://localhost:8000"
 
           # Debug
           echo "🔍 Integration tests - Variables check:"
           echo "AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:10}***"
+          echo "FastAPI URL: $FASTAPI_BASE_URL"
 
           # Run tests
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
@@ -132,7 +159,15 @@ jobs:
             --self-contained-html \
             -v -s \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml" 
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml"
+
+      - name: Stop FastAPI app
+        if: always()
+        run: |
+          if [ ! -z "$FASTAPI_PID" ]; then
+            kill $FASTAPI_PID || true
+            echo "✅ FastAPI stopped"
+          fi 
 
       - name: List generated test files
         if: always()
