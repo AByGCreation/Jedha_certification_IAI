@@ -15,70 +15,97 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 sys.path.append('./Bloc4 - Final project/Projet/Architecture')
 
-# Load environment
-dotenv_path = find_dotenv()
-load_dotenv(".env")
-load_dotenv(dotenv_path)
+# Load environment FIRST
+load_dotenv(find_dotenv(), override=True)
+load_dotenv(".env", override=True)
 
-print(f"\n✅ .env loaded")
-print(f"MLFLOW_TRACKING_URI: {os.getenv('MLFLOW_TRACKING_URI', 'NOT SET')}\n")
+print(f"\n{'='*60}")
+print(f"🔧 CONFTEST SETUP")
+print(f"{'='*60}")
+print(f"MLFLOW_TRACKING_URI: {os.getenv('MLFLOW_TRACKING_URI', 'NOT SET')}")
+print(f"NEONDB: {os.getenv('NEONDB_CONNECTION_STRING', 'NOT SET')[:50]}...")
+print(f"{'='*60}\n")
 
 # ========================================
-# GLOBAL MODEL STATE
+# IMPORT APP (après setup paths)
 # ========================================
 
-_MODEL = None
-_MODEL_LOADED = False
+try:
+    from App.Dockers.fastapi.main import app, getMyModel, getModelRunID
+    print("✅ FastAPI app imported successfully\n")
+except Exception as e:
+    print(f"❌ Failed to import FastAPI app: {e}\n")
+    app = None
+    getMyModel = None
+    getModelRunID = None
 
-def try_load_model():
-    """Try to load model - don't fail if it can't"""
-    global _MODEL, _MODEL_LOADED
+# ========================================
+# SESSION-WIDE MODEL LOADING
+# ========================================
+
+@pytest.fixture(scope="session", autouse=True)
+def load_model_once():
+    """
+    Charge le modèle UNE SEULE FOIS pour toute la session de tests.
+    S'exécute automatiquement avant tous les tests.
+    """
+    if app is None or getMyModel is None:
+        print("⚠️ FastAPI app not available, skipping model load\n")
+        yield None
+        return
     
-    if _MODEL_LOADED:
-        return _MODEL
-    
-    print("🤖 Attempting to load model...")
+    print("\n🤖 Loading MLflow model (once for all tests)...")
     
     try:
-        from App.Dockers.fastapi.main import getMyModel
-        
         model = getMyModel()
-        _MODEL = model
-        _MODEL_LOADED = True
         
-        if model is not None:
-            print("✅ Model loaded successfully\n")
+        if model is None:
+            print("⚠️ Model is None - tests requiring model will be skipped\n")
         else:
-            print("⚠️ Model is None - will skip model tests\n")
+            # Injecter dans app.state
+            app.state.loaded_model = model
+            print("✅ Model loaded and injected into app.state\n")
         
-        return model
+        yield model
         
     except Exception as e:
-        print(f"⚠️ Model loading failed (will skip model tests): {e}\n")
-        _MODEL_LOADED = True
-        _MODEL = None
-        return None
+        print(f"❌ Model loading failed: {e}\n")
+        import traceback
+        traceback.print_exc()
+        yield None
 
 # ========================================
 # MODEL FIXTURES
 # ========================================
 
 @pytest.fixture(scope="session")
-def model():
-    """Get the loaded model (may be None)"""
-    return try_load_model()
+def model(load_model_once):
+    """Get the loaded model"""
+    return load_model_once
 
 @pytest.fixture(scope="session")
-def model_available():
+def model_available(load_model_once):
     """Check if model is available"""
-    model = try_load_model()
-    return model is not None
+    return load_model_once is not None
+
+@pytest.fixture
+def require_model(model_available):
+    """Skip test if model not available"""
+    if not model_available:
+        pytest.skip("Model not available - skipping test")
+
+# ========================================
+# FASTAPI CLIENT
+# ========================================
 
 @pytest.fixture(scope="session")
-def require_model(model_available):
-    """Skip test if model is not available"""
-    if not model_available:
-        pytest.skip("Model not available")
+def client():
+    """FastAPI test client - shared across all tests"""
+    if app is None:
+        pytest.skip("FastAPI app not available")
+    
+    from fastapi.testclient import TestClient
+    return TestClient(app)
 
 # ========================================
 # DATABASE CONNECTION
@@ -90,7 +117,7 @@ def db_connection():
     try:
         conn_str = os.getenv("NEONDB_CONNECTION_STRING")
         if not conn_str:
-            print("⚠️ NEONDB_CONNECTION_STRING not set\n")
+            print("⚠️ NEONDB_CONNECTION_STRING not set, skipping DB tests\n")
             yield None
             return
             
@@ -98,17 +125,18 @@ def db_connection():
         print("✅ Connected to Neon database\n")
         yield conn
         conn.close()
+        print("✅ Database connection closed\n")
     except Exception as e:
         print(f"⚠️ Database unavailable: {e}\n")
         yield None
 
 # ========================================
-# TEST RUN CREATION
+# TEST RUN TRACKING
 # ========================================
 
 @pytest.fixture(scope="session")
 def test_run_id(db_connection):
-    """Create test run - optional"""
+    """Create test run in database - optional"""
     if db_connection is None:
         yield None
         return
@@ -138,13 +166,17 @@ def test_run_id(db_connection):
         print(f"📊 Test Run ID: {run_id}\n")
         yield run_id
         
-        # Update at end
+        # Update totals at end
         try:
             cursor.execute("""
                 UPDATE test_runs 
-                SET completed_at = %s
+                SET completed_at = %s,
+                    total_tests = (SELECT COUNT(*) FROM test_logs WHERE run_id = %s),
+                    passed_tests = (SELECT COUNT(*) FROM test_logs WHERE run_id = %s AND status = 'passed'),
+                    failed_tests = (SELECT COUNT(*) FROM test_logs WHERE run_id = %s AND status = 'failed'),
+                    skipped_tests = (SELECT COUNT(*) FROM test_logs WHERE run_id = %s AND status = 'skipped')
                 WHERE run_id = %s
-            """, (datetime.now(), run_id))
+            """, (datetime.now(), run_id, run_id, run_id, run_id, run_id))
             db_connection.commit()
         except:
             pass
@@ -154,7 +186,7 @@ def test_run_id(db_connection):
         yield None
 
 # ========================================
-# PYTEST HOOKS
+# PYTEST HOOKS FOR LOGGING
 # ========================================
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -180,10 +212,6 @@ def pytest_runtest_makereport(item, call):
     except Exception as e:
         print(f"⚠️ Error logging test: {e}")
 
-# ========================================
-# LOGGING FUNCTION
-# ========================================
-
 def log_test_result(db_connection, run_id, item, report):
     """Log test result to database"""
     cursor = db_connection.cursor()
@@ -203,13 +231,7 @@ def log_test_result(db_connection, run_id, item, report):
     
     status = report.outcome
     duration_ms = int(report.duration * 1000)
-    error_message = None
-    
-    if report.failed:
-        try:
-            error_message = str(report.longrepr)[:500]
-        except:
-            pass
+    error_message = str(report.longrepr)[:500] if report.failed else None
     
     try:
         cursor.execute("""
