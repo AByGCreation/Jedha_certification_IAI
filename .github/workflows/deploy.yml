@@ -92,6 +92,18 @@ jobs:
           comment_title: "Integration Tests"
           fail_on: "test failures"
 
+      - name: Run model quality tests with report
+        continue-on-error: true
+        run: |
+          pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
+            --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_report_${{ steps.timestamp.outputs.date }}.html" \
+            --self-contained-html \
+            --json-report \
+            --json-report-file="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_report_${{ steps.timestamp.outputs.date }}.json" \
+            -v \
+            --tb=short \
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_results_${{ steps.timestamp.outputs.date }}.xml"
+
   deploy:
     needs: test
     runs-on: ubuntu-latest

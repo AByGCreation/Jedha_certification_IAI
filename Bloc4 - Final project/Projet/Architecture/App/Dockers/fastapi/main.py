@@ -14,6 +14,11 @@ from datetime import datetime
 import warnings
 import traceback
 
+
+current_path = os.path.dirname(os.path.abspath(__file__))
+project_path = os.path.abspath(os.path.join(current_path, "..", "..")) + "/"
+sys.path.append(os.path.join(current_path, 'libraries'))
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 #======================================
@@ -213,29 +218,6 @@ def datetimeConverter(df: pd.DataFrame, datetime_columns: list) -> None:
             except Exception as e:
                 print(f"✗ {col}: Failed to convert ({e})")
 
-def getMyMsodel():
-    """Load the MLflow model using the best run ID."""
-    # Configuration MLFlow
-    mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
-    mlflow.set_tracking_uri(mlflow_tracking_uri)
-                
-    # Charger le modèle
-    modelRunID = getModelRunID()
-
-    if modelRunID is None:
-        print("⚠️ WARNING: Aucun modèle disponible")
-        return None
-    
-    print(f"Model runid: {modelRunID.latest_versions[0].run_id}")
-    print(f"Model name: {modelRunID.latest_versions[0].name}")
-
-    logged_model = os.getenv("MODEL_URI", f"runs:/{modelRunID.latest_versions[0].run_id}/{EXPERIMENT_NAME}")
-    loaded_model = mlflow.pyfunc.load_model(logged_model)
-    print(f"✅ Model loaded successfully from {logged_model}")
-
-    return loaded_model  # ← Retourne le modèle chargé
-
-
 def getMyModel():
     """Load the MLflow model using the best run ID."""
     mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
@@ -270,6 +252,22 @@ def getMyModel():
         print(f"❌ Error loading PyFunc model: {str(e)}")
         traceback.print_exc()
         return None
+
+def load_reference_dataset() -> tuple[pd.DataFrame, pd.Series]:
+    """Load a reference dataset for model quality tests."""
+    dataset_path =  os.path.join(os.path.dirname(project_path),"localModel", "datasSources", "inputDataset", "fraudTest.csv")
+    
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(f"Reference dataset not found at {dataset_path}")
+    
+    df = pd.read_csv(dataset_path)
+    print(f"✅ Reference dataset loaded from {dataset_path} with shape {df.shape}")
+    
+    X = df.drop(columns=["is_fraud"])
+    y = df["is_fraud"]
+    
+    return X, y
+
 #======================================
 # Lifespan context manager
 #======================================
@@ -286,7 +284,6 @@ async def lifespan(app: FastAPI):
     yield
     
     print("Shutting down...")
-
 
 
 #======================================
@@ -331,7 +328,6 @@ class PredictionResponse(BaseModel):
     amt: Optional[float] = None
     category: Optional[str] = None
 
-
 #======================================
 # API Endpoints
 #======================================
@@ -354,66 +350,6 @@ async def health():
         "model_loaded": getattr(app.state, "loaded_model", None) is not None,
         "mlflow_uri": os.getenv("MLFLOW_TRACKING_URI", "https://davidrambeau-bloc3-mlflow.hf.space")
     }
-
-# @app.post("/predict", response_model=PredictionResponse)
-# async def predict(transaction: Transaction):
-#     """
-#     Make a fraud prediction for a single transaction.
-#     """
-
-#     # Convert Transaction object to DataFrame
-#     trans_dict = pd.DataFrame([transaction.model_dump()])
-#     trans_dict = Preprocessor(trans_dict)
-
-#     print(separator)
-#     print(f"📥 Received transaction for prediction at : {datetime.now().strftime('%H:%M:%S')} ")
-#     print(f"Transaction: {transaction}")
-#     print(separator)
-
-#     #loaded_model = getattr(app.state, "loaded_model", None)
-
-#     if app.state.loaded_model is None:
-#         print("❌ Model not loaded.")
-#         raise HTTPException(status_code=503, detail="Model not loaded")
-    
-#     try:
-#         # Convertir en DataFrame
-#         #df = pd.DataFrame([transaction.model_dump()])
-        
-#         print(f"📊 DataFrame shape: {trans_dict.shape}")
-#         print(f"📊 DataFrame columns: {trans_dict.columns.tolist()}")
-#         print(f"📊 Data for prediction: {trans_dict.to_dict(orient='records')}")
-        
-#         # ⚠️ CRITIQUE: Vérifier les colonnes attendues par le modèle
-#         #print(f"📊 Model expected features: {model.feature_names_in_ if hasattr(model, 'feature_names_in_') else 'Unknown'}")
-        
-#         # Prédiction
-
-        
-#         prediction = app.state.loaded_model.predict(trans_dict)
-#         modelRunID = getModelRunID()
-
-#         model_name = modelRunID.name
-#         model_version = modelRunID.latest_versions[0].version
-        
-#         prediction = app.state.loaded_model.predict(trans_dict)
-
-#         print(f"✅ Prediction result with model {model_name} (v{model_version}) : {prediction}")
-        
-#         return PredictionResponse(
-#             prediction=int(prediction[0]),
-#             is_fraud=bool(prediction[0] == 1),
-#             trans_num=transaction.trans_num,
-#             amt=transaction.amt,
-#             category=transaction.category,
-#         )
-        
-#     except Exception as e:
-#         print(f"❌ ERREUR DÉTAILLÉE:")
-#         import traceback
-#         traceback.print_exc()
-#         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
-
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(transaction: Transaction):

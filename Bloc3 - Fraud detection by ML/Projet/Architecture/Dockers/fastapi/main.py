@@ -185,9 +185,6 @@ def Preprocessor(eda_input_dataframe : pd.DataFrame) -> pd.DataFrame:
     
     return eda_input_dataframe
 
-
-
-
 def haversine(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     """
     Calculate the great circle distance between two points 
@@ -221,7 +218,6 @@ def datetimeConverter(df: pd.DataFrame, datetime_columns: list) -> None:
             except Exception as e:
                 print(f"✗ {col}: Failed to convert ({e})")
 
-
 class Transaction(BaseModel):
     cc_num: int  # 
     merchant: str
@@ -244,8 +240,6 @@ class Transaction(BaseModel):
     merch_long: float
     is_fraud: int  # 
     current_time: int  #
-
-
 
 class PredictionResponse(BaseModel):
     prediction: int

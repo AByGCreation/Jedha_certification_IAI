@@ -22,7 +22,7 @@ HF_connectionURL = "https://huggingface.co/spaces/sdacelo/real-time-fraud-detect
 HF_connectionCSV = "https://lead-program-assets.s3.eu-west-3.amazonaws.com/M05-Projects/fraudTest.csv"
 API_URL = "https://sdacelo-real-time-fraud-detection.hf.space/current-transactions"
 
-local_connectionURL = os.path.abspath("./Bloc3 - Fraud detection by ML/Projet/datasSources/inputDataset/fraudTest.csv")  # absolute path
+local_connectionURL = os.path.abspath("./Bloc4 - Final project/Projet/Architecture/App/localModel/datasSources/inputDataset/fraudTest.csv")  # absolute path
 localDB_connectionURL = os.path.join(os.path.dirname(project_path), "datasSources", "inputDataset", "fraudTest.db")
 
 localDB_tableName = "transactions"
