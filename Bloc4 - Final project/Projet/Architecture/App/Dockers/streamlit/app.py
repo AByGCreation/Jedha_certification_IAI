@@ -14,7 +14,7 @@ st.set_page_config(
     page_title="Dashboard Suivi des indicateurs qualité",
     layout="wide"
 )
-st.header.title("📊 Dashboard Suivi des indicateurs qualité")
+st.header("📊 Dashboard Suivi des indicateurs de qualité")
 st.markdown("""
 Ce dashboard présente les indicateurs clés de performance (KPI) des tests automatisés
 exécutés sur le modèle de détection de fraude. Il permet de suivre la qualité du modèle
