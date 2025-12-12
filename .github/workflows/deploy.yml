@@ -38,6 +38,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install pytest pytest-html pytest-json-report httpx psycopg2-binary python-dotenv
+          pip install boto3 botocore 
           pip install mlflow scikit-learn pandas numpy
           pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
 
