@@ -231,17 +231,17 @@ jobs:
           fi
 
       - name: Setup Python 3.10 for Streamlit
-        if: contains(github.event.head_commit.modified, 'streamlit')
+        if: steps.changes.outputs.streamlit == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
       - name: Install dependencies for Streamlit
-        if: contains(github.event.head_commit.modified, 'streamlit')
+        if: steps.changes.outputs.streamlit == 'true'
         run: pip install huggingface_hub
 
       - name: Deploy Streamlit to Hugging Face Spaces
-        if: contains(github.event.head_commit.modified, 'streamlit')
+        if: steps.changes.outputs.streamlit == 'true'
         run: |
           python -c "
           from huggingface_hub import HfApi
@@ -252,19 +252,20 @@ jobs:
               repo_type='space'
           )
           "
+          echo "✅ Streamlit deployed successfully"
 
       - name: Setup Python 3.12 for FastAPI
-        if: contains(github.event.head_commit.modified, 'fastapi')
+        if: steps.changes.outputs.fastapi == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
 
       - name: Install dependencies for FastAPI
-        if: contains(github.event.head_commit.modified, 'fastapi')
+        if: steps.changes.outputs.fastapi == 'true'
         run: pip install huggingface_hub
 
       - name: Deploy FastAPI to Hugging Face Spaces
-        if: contains(github.event.head_commit.modified, 'fastapi')
+        if: steps.changes.outputs.fastapi == 'true'
         run: |
           python -c "
           from huggingface_hub import HfApi
@@ -274,3 +275,5 @@ jobs:
               repo_id='DavidRambeau/bloc3_FastAPI',
               repo_type='space'
           )
+          "
+          echo "✅ FastAPI deployed successfully"
