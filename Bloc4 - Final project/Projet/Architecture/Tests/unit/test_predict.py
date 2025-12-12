@@ -44,7 +44,7 @@ def setup_model_for_tests():
         print(f"✅ Modèle chargé : {model}")
 
     
-    # Forcer la variable globale
+    # Forcer la variable globales
     app.state.loaded_model = model
     
     print("✅ Modèle injecté dans l'app\n")
