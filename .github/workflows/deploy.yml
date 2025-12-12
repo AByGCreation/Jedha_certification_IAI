@@ -30,6 +30,14 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Debug environment
+        run: |
+          echo "🔍 Environment check:"
+          echo "MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:0:50}..."
+          echo "HF_TOKEN set: ${{ secrets.HF_TOKEN != '' }}"
+          echo "NEONDB set: ${{ secrets.NEONDB_CONNECTION_STRING != '' }}"
+          python -c "import mlflow; print(f'MLflow version: {mlflow.__version__}')"
+
       - name: Create test results directory
         run: mkdir -p "Bloc4 - Final project/Projet/Architecture/Tests/test_results"
 

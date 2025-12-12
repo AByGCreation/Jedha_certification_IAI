@@ -47,7 +47,7 @@ except Exception as e:
 def load_model_once():
     """
     Charge le modèle UNE SEULE FOIS pour toute la session de tests.
-    S'exécute automatiquement avant tous les tests.
+    En CI, si le chargement échoue, continue sans modèle (tests skip).
     """
     if app is None or getMyModel is None:
         print("⚠️ FastAPI app not available, skipping model load\n")
@@ -56,11 +56,18 @@ def load_model_once():
     
     print("\n🤖 Loading MLflow model (once for all tests)...")
     
+    # Vérifier si on est en CI
+    is_ci = os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true"
+    
     try:
         model = getMyModel()
         
         if model is None:
-            print("⚠️ Model is None - tests requiring model will be skipped\n")
+            if is_ci:
+                print("⚠️ Model is None in CI - tests requiring model will be skipped\n")
+            else:
+                print("❌ Model is None locally - stopping tests\n")
+                pytest.exit("❌ Failed to load model")
         else:
             # Injecter dans app.state
             app.state.loaded_model = model
@@ -72,7 +79,15 @@ def load_model_once():
         print(f"❌ Model loading failed: {e}\n")
         import traceback
         traceback.print_exc()
-        yield None
+        
+        # En CI, continuer sans modèle (skip tests)
+        # En local, arrêter
+        if is_ci:
+            print("⚠️ In CI: Continuing without model (tests will skip)\n")
+            yield None
+        else:
+            print("❌ Local: Stopping tests\n")
+            pytest.exit(f"❌ Failed to load model: {e}")
 
 # ========================================
 # MODEL FIXTURES
