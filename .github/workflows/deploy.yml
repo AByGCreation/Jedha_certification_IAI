@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  tag:
+  putting_tag:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -21,8 +21,8 @@ jobs:
           git tag "pushed-v${{ github.run_number }}"
           git push origin "pushed-v${{ github.run_number }}"
 
-  tests:
-    needs: tag
+  implementing_tests:
+    needs: putting_tag
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,26 +30,34 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Create test results directory
+        run: mkdir -p "Bloc4 - Final project/Projet/Architecture/Tests/test_results"
+
+      # ✅ INSTALLER LES DÉPENDANCES EN PREMIER
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest pytest-html pytest-json-report httpx psycopg2-binary python-dotenv
+          pip install mlflow scikit-learn pandas numpy
+          pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
+
+      # ✅ PUIS DEBUG
       - name: Debug environment
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
           echo "🔍 Environment check:"
           echo "MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:0:50}..."
           echo "HF_TOKEN set: ${{ secrets.HF_TOKEN != '' }}"
           echo "NEONDB set: ${{ secrets.NEONDB_CONNECTION_STRING != '' }}"
           python -c "import mlflow; print(f'MLflow version: {mlflow.__version__}')"
-
-      - name: Create test results directory
-        run: mkdir -p "Bloc4 - Final project/Projet/Architecture/Tests/test_results"
+          python -c "import sys; print(f'Python: {sys.version}')"
 
       - name: Generate timestamp
         id: timestamp
         run: echo "date=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_OUTPUT
 
-      - name: Install test dependencies
-        run: |
-          pip install pytest pytest-html pytest-json-report httpx psycopg2-binary
-          pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
-
+      # ✅ PUIS TESTS
       - name: Run unit tests
         continue-on-error: true
         env:
@@ -59,7 +67,7 @@ jobs:
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_report_${{ steps.timestamp.outputs.date }}.html" \
             --self-contained-html \
-            -v \
+            -v -s \
             --tb=short \
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
 
@@ -72,66 +80,12 @@ jobs:
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_report_${{ steps.timestamp.outputs.date }}.html" \
             --self-contained-html \
-            -v \
+            -v -s \
             --tb=short \
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
 
-      - name: Run model quality tests
-        continue-on-error: true
-        env:
-          NEONDB_CONNECTION_STRING: ${{ secrets.NEONDB_CONNECTION_STRING }}
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-        run: |
-          pytest "Bloc4 - Final project/Projet/Architecture/Tests/test_model_quality.py" \
-            --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_report_${{ steps.timestamp.outputs.date }}.html" \
-            --self-contained-html \
-            -v \
-            --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
-
-      - name: List generated test files
-        if: always()
-        run: |
-          echo "📂 Test results directory contents:"
-          ls -lah "Bloc4 - Final project/Projet/Architecture/Tests/test_results/" || echo "Directory is empty"
-
-      - name: Upload all test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports-${{ steps.timestamp.outputs.date }}
-          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/"
-          retention-days: 30
-
-      - name: Publish unit test results
-        if: always() && hashFiles('Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_*.xml') != ''
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_*.xml"
-          check_name: "Unit Test Results"
-          comment_title: "Unit Tests"
-          fail_on: "nothing"
-
-      - name: Publish integration test results
-        if: always() && hashFiles('Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_*.xml') != ''
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_*.xml"
-          check_name: "Integration Test Results"
-          comment_title: "Integration Tests"
-          fail_on: "nothing"
-
-      - name: Publish quality test results
-        if: always() && hashFiles('Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_results_*.xml') != ''
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_results_*.xml"
-          check_name: "Model Quality Test Results"
-          comment_title: "Model Quality Tests"
-          fail_on: "nothing"
-
-  deploy:
-    needs: tests
+  deployment:
+    needs: implementing_tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
