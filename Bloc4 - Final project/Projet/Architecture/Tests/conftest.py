@@ -24,18 +24,25 @@ print(f"\n✅ .env loaded from: {dotenv_path}")
 print(f"NEONDB_CONNECTION_STRING: {'SET' if os.getenv('NEONDB_CONNECTION_STRING') else 'NOT SET'}")
 print(f"MLFLOW_TRACKING_URI: {os.getenv('MLFLOW_TRACKING_URI', 'NOT SET')}\n")
 
+# Global model storage
+_LOADED_MODEL = None
+_MODEL_LOAD_ERROR = None
+
 # ========================================
-# CONNEXION DATABASE
+# DATABASE CONNECTION
 # ========================================
 
 @pytest.fixture(scope="session")
 def db_connection():
     """Shared database connection for entire test session"""
     try:
-        conn = psycopg2.connect(
-            os.getenv("NEONDB_CONNECTION_STRING"),
-            cursor_factory=RealDictCursor
-        )
+        conn_str = os.getenv("NEONDB_CONNECTION_STRING")
+        if not conn_str:
+            print("⚠️ NEONDB_CONNECTION_STRING not set - skipping database logging\n")
+            yield None
+            return
+            
+        conn = psycopg2.connect(conn_str, cursor_factory=RealDictCursor)
         print("✅ Connected to Neon database\n")
         yield conn
         conn.close()
@@ -44,7 +51,7 @@ def db_connection():
         yield None
 
 # ========================================
-# CRÉATION DU TEST RUN
+# TEST RUN CREATION
 # ========================================
 
 @pytest.fixture(scope="session")
@@ -57,7 +64,6 @@ def test_run_id(db_connection):
     
     cursor = db_connection.cursor()
     
-    # Contextual information
     git_commit = get_git_commit()
     git_branch = get_git_branch()
     ci_run_id = os.getenv("GITHUB_RUN_ID", None)
@@ -65,7 +71,6 @@ def test_run_id(db_connection):
     created_by = os.getenv("GITHUB_ACTOR", os.getenv("USER", "unknown"))
     
     try:
-        # Create the test_run
         cursor.execute("""
             INSERT INTO test_runs (
                 git_commit_hash, git_branch, ci_run_id, 
@@ -86,7 +91,7 @@ def test_run_id(db_connection):
         
         yield run_id
         
-        # Update totals at end of session
+        # Update totals at end
         cursor.execute("""
             UPDATE test_runs 
             SET 
@@ -104,41 +109,55 @@ def test_run_id(db_connection):
             WHERE run_id = %s
         """, (datetime.now(), run_id, run_id, run_id, run_id, run_id, run_id, run_id))
         db_connection.commit()
-        
-        print(f"✅ Test Run {run_id} completed and updated\n")
+        print(f"✅ Test Run {run_id} updated\n")
         
     except Exception as e:
-        print(f"❌ Error creating test_run: {e}\n")
+        print(f"❌ Error with test_run: {e}\n")
         yield None
 
 # ========================================
-# MODEL LOADING FIXTURE
+# MODEL LOADING - OPTIONAL, NON-BLOCKING
 # ========================================
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_model_for_tests():
-    """Load MLflow model before tests - OPTIONAL (don't fail if not available)"""
+def load_model():
+    """Try to load model but don't block tests if it fails"""
+    global _LOADED_MODEL, _MODEL_LOAD_ERROR
+    
+    print("🤖 Attempting to load MLflow model...")
     try:
         from App.Dockers.fastapi.main import app, getMyModel
         
-        print("🤖 Loading model for tests...")
         model = getMyModel()
-        
-        if model is None:
-            print("⚠️ Model not available - tests will skip model-dependent operations\n")
-            yield None
-            return
-        
-        app.state.loaded_model = model
-        print(f"✅ Model loaded successfully\n")
-        yield model
-        
+        if model is not None:
+            app.state.loaded_model = model
+            _LOADED_MODEL = model
+            print("✅ Model loaded successfully\n")
+        else:
+            _MODEL_LOAD_ERROR = "Model is None"
+            print("⚠️ Model returned None (may not be registered in MLflow)\n")
+            
     except Exception as e:
-        print(f"⚠️ Model loading failed (optional): {e}\n")
-        yield None
+        _MODEL_LOAD_ERROR = str(e)
+        print(f"⚠️ Model loading failed (tests will continue): {e}\n")
+    
+    yield
+    _LOADED_MODEL = None
+
+@pytest.fixture(scope="session")
+def model():
+    """Fixture to provide model to tests"""
+    global _LOADED_MODEL
+    return _LOADED_MODEL
+
+@pytest.fixture(scope="session")
+def model_available():
+    """Check if model is available"""
+    global _LOADED_MODEL
+    return _LOADED_MODEL is not None
 
 # ========================================
-# HOOK PYTEST POUR LOGGER CHAQUE TEST
+# PYTEST HOOK FOR LOGGING
 # ========================================
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -148,9 +167,7 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
     
-    # Log only after test execution (not setup/teardown)
     if report.when == "call":
-        # Get fixtures from the request
         if hasattr(item, 'funcargs'):
             db_connection = item.funcargs.get('db_connection')
             test_run_id = item.funcargs.get('test_run_id')
@@ -164,7 +181,7 @@ def pytest_runtest_makereport(item, call):
                 )
 
 # ========================================
-# FONCTION DE LOGGING
+# LOGGING FUNCTION
 # ========================================
 
 def log_test_result(db_connection, run_id, item, report):
@@ -174,8 +191,6 @@ def log_test_result(db_connection, run_id, item, report):
         return
     
     cursor = db_connection.cursor()
-    
-    # Extract test information
     test_name = item.name
     test_file = str(item.fspath.relative_to(item.config.rootdir))
     
@@ -186,65 +201,47 @@ def log_test_result(db_connection, run_id, item, report):
     elif "integration" in test_file:
         test_category = "integration"
         test_gate = 2
-    elif "quality" in test_file:
-        test_category = "quality"
-        test_gate = 2
     else:
         test_category = "other"
         test_gate = None
     
-    # Status and duration
-    status = report.outcome  # passed | failed | skipped
+    status = report.outcome
     duration_ms = int(report.duration * 1000)
     
-    # Error (if failed)
     error_message = None
-    error_traceback = None
     if report.failed:
         try:
-            error_message = str(report.longreprtext)[:500] if hasattr(report, 'longreprtext') else str(report.longrepr)[:500]
-            error_traceback = str(report.longrepr)[:2000] if hasattr(report, 'longrepr') else None
+            error_message = str(report.longrepr)[:500]
         except:
             pass
     
-    # Git context
     git_commit = get_git_commit()
     git_branch = get_git_branch()
     ci_run_id = os.getenv("GITHUB_RUN_ID", None)
     environment = "ci" if ci_run_id else "local"
     created_by = os.getenv("GITHUB_ACTOR", os.getenv("USER", "unknown"))
     
-    # Insert into test_logs
     try:
         cursor.execute("""
             INSERT INTO test_logs (
                 run_id, test_name, test_file, test_category, test_gate,
-                status, duration_ms, error_message, error_traceback,
+                status, duration_ms, error_message,
                 git_commit_hash, git_branch, ci_run_id, environment, created_at, created_by
-            ) VALUES (
-                %s, %s, %s, %s, %s,
-                %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s
-            )
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             run_id, test_name, test_file, test_category, test_gate,
-            status, duration_ms, error_message, error_traceback,
+            status, duration_ms, error_message,
             git_commit, git_branch, ci_run_id, environment, datetime.now(), created_by
         ))
         db_connection.commit()
-        
         status_icon = "✅" if status == "passed" else "❌" if status == "failed" else "⏭️"
-        print(f"{status_icon} {test_name} ({duration_ms}ms)")
+        print(f"{status_icon} {test_name}")
         
     except Exception as e:
         print(f"❌ Error logging {test_name}: {e}")
-        try:
-            db_connection.rollback()
-        except:
-            pass
 
 # ========================================
-# UTILITAIRES GIT
+# GIT UTILITIES
 # ========================================
 
 def get_git_commit():
@@ -259,12 +256,9 @@ def get_git_commit():
 
 def get_git_branch():
     """Get current Git branch"""
-    # In CI, use environment variable
     branch = os.getenv("GITHUB_REF_NAME")
     if branch:
         return branch
-    
-    # Locally, use git
     try:
         return subprocess.check_output(
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],

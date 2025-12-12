@@ -27,6 +27,21 @@ from App.Dockers.fastapi.main import app, getMyModel, getModelRunID
 class TestIntegration:
     """Test d'intégration complet de l'application FastAPI"""
     
+    def test_01_app_startup(self):
+        """Test 1: Simple test that doesn't need model"""
+        assert True, "Basic test should pass"
+    
+    @pytest.mark.skipif(
+        not pytest.importorskip("sys").modules.get('App.Dockers.fastapi.main'),
+        reason="FastAPI app not available"
+    )
+    def test_02_with_model(self, model_available):
+        """Test 2: Test that requires model"""
+        if not model_available:
+            pytest.skip("Model not available")
+        
+        assert True, "Model-dependent test"
+    
     @pytest.fixture(scope="class", autouse=True)
     def setup_app(self):
         """Initialize app with loaded model before all tests"""

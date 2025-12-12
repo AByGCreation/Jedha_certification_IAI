@@ -53,7 +53,7 @@ jobs:
             --self-contained-html \
             -v \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml"
 
       - name: Run integration tests
         continue-on-error: false
@@ -66,7 +66,7 @@ jobs:
             --self-contained-html \
             -v \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml"
 
       - name: Run model quality tests
         continue-on-error: false
@@ -79,7 +79,7 @@ jobs:
             --self-contained-html \
             -v \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_results_${{ steps.timestamp.outputs.date }}.xml" || true
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_results_${{ steps.timestamp.outputs.date }}.xml"
 
       - name: List generated test files
         if: always()
