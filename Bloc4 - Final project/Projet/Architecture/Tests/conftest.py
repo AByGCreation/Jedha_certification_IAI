@@ -59,6 +59,34 @@ def load_model_once():
     # Vérifier si on est en CI
     is_ci = os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true"
     
+
+    aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+    aws_region = os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
+    
+    if aws_access_key and aws_secret_key:
+        print(f"🔑 AWS credentials found (key: {aws_access_key[:10]}***)")
+        print(f"🌍 AWS region: {aws_region}")
+        
+        # Configurer boto3 explicitement
+        import boto3
+        boto3.setup_default_session(
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+            region_name=aws_region
+        )
+        
+        # OU configurer via variables d'environnement
+        os.environ["AWS_ACCESS_KEY_ID"] = aws_access_key
+        os.environ["AWS_SECRET_ACCESS_KEY"] = aws_secret_key
+        os.environ["AWS_DEFAULT_REGION"] = aws_region
+        
+        print("✅ Boto3 configured with credentials")
+    else:
+        print("⚠️ AWS credentials not found in environment")
+
+
+
     try:
         model = getMyModel()
         
