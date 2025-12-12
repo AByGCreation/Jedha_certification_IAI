@@ -3,6 +3,10 @@
 [![RNCP](https://img.shields.io/badge/RNCP-38777-blue)](https://www.francecompetences.fr/recherche/rncp/38777/)
 [![Niveau](<https://img.shields.io/badge/Niveau-7_(BAC+5)-green>)](https://www.francecompetences.fr/recherche/rncp/38777/)
 [![Statut](https://img.shields.io/badge/Statut-En_cours-orange)]()
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?logo=github-actions&logoColor=white)]()
+[![Tests](https://img.shields.io/badge/Tests-pytest-0A9EDC?logo=pytest&logoColor=white)]()
+[![Monitoring](https://img.shields.io/badge/Monitoring-Apitally-FF6B6B)]()
+[![Deployment](https://img.shields.io/badge/Deployment-HF_Spaces-FFD21E?logo=huggingface&logoColor=black)]()
 
 ---
 

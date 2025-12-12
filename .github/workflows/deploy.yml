@@ -43,9 +43,11 @@ jobs:
           pip install -r "Bloc4 - Final project/Projet/Architecture/App/Dockers/fastapi/requirements.txt"
 
       - name: Run unit tests with database logging
-        continue-on-error: true
+        continue-on-error: false
         env:
           NEONDB_CONNECTION_STRING: ${{ secrets.NEONDB_CONNECTION_STRING }}
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+
         run: |
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_report_${{ steps.timestamp.outputs.date }}.html" \
@@ -57,9 +59,10 @@ jobs:
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml"
 
       - name: Run integration tests with database logging
-        continue-on-error: true
+        continue-on-error: false
         env:
           NEONDB_CONNECTION_STRING: ${{ secrets.NEONDB_CONNECTION_STRING }}
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_report_${{ steps.timestamp.outputs.date }}.html" \
@@ -97,7 +100,7 @@ jobs:
           fail_on: "test failures"
 
       - name: Run model quality tests with report
-        continue-on-error: true
+        continue-on-error: false
         run: |
           pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
             --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/quality_test_report_${{ steps.timestamp.outputs.date }}.html" \
