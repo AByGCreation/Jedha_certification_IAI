@@ -54,6 +54,38 @@ jobs:
             --tb=short \
             --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/test_results_${{ steps.timestamp.outputs.date }}.xml"
 
+      - name: Run unit tests with report
+        continue-on-error: true
+        run: |
+          pytest "Bloc4 - Final project/Projet/Architecture/Tests/unit/" \
+            --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_report_${{ steps.timestamp.outputs.date }}.html" \
+            --self-contained-html \
+            --json-report \
+            --json-report-file="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_report_${{ steps.timestamp.outputs.date }}.json" \
+            -v \
+            --tb=short \
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml"
+
+      - name: Run integration test with report
+        continue-on-error: true
+        run: |
+          pytest "Bloc4 - Final project/Projet/Architecture/Tests/integration/" \
+            --html="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_report_${{ steps.timestamp.outputs.date }}.html" \
+            --self-contained-html \
+            --json-report \
+            --json-report-file="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_report_${{ steps.timestamp.outputs.date }}.json" \
+            -v \
+            --tb=short \
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/integration_test_results_${{ steps.timestamp.outputs.date }}.xml"
+
+      - name: Upload all reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ steps.timestamp.outputs.date }}
+          path: "Bloc4 - Final project/Projet/Architecture/Tests/test_results/"
+          retention-days: 30
+
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
