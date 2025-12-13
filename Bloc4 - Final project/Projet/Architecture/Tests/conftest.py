@@ -135,7 +135,7 @@ def model_available(load_model_once):
 def require_model(model_available):
     """Skip test if model not available"""
     if not model_available:
-        pytest.skip("Model not available - skipping test")
+        pytest.skip("⚠️ Model not available - skipping test")
 
 # ========================================
 # FASTAPI CLIENT
@@ -145,7 +145,7 @@ def require_model(model_available):
 def client():
     """FastAPI test client - shared across all tests"""
     if app is None:
-        pytest.skip("FastAPI app not available")
+        pytest.skip("⚠️ FastAPI app not available")
     
     from fastapi.testclient import TestClient
     return TestClient(app)
