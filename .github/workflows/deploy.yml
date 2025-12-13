@@ -110,7 +110,7 @@ jobs:
             --self-contained-html \
             -v -s \
             --tb=short \
-            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml" 
+            --junit-xml="Bloc4 - Final project/Projet/Architecture/Tests/test_results/unit_test_results_${{ steps.timestamp.outputs.date }}.xml"
 
       - name: Start FastAPI app in background
         run: |
@@ -167,7 +167,7 @@ jobs:
           if [ ! -z "$FASTAPI_PID" ]; then
             kill $FASTAPI_PID || true
             echo "✅ FastAPI stopped"
-          fi 
+          fi
 
       - name: List generated test files
         if: always()
@@ -259,7 +259,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
-          
+
       - name: Install dependencies for FastAPI
         if: steps.changes.outputs.fastapi == 'true'
         run: pip install huggingface_hub
@@ -277,3 +277,26 @@ jobs:
           )
           "
           echo "✅ FastAPI deployed successfully"
+
+  # alerting:
+  #   name: Slack send report
+  #   needs: deployment
+  #   runs-on: ubuntu-latest
+  #   steps:
+
+  #     - name: Print a greeting
+  #       env:
+  #         MY_VAR: Hi there! My name is
+  #         FIRST_NAME: Mona
+  #         MIDDLE_NAME: The
+  #         LAST_NAME: Octocat
+  #       run: |
+  #         echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
+  #     - name: Send to Slack
+  #       uses: slackapi/slack-github-action@v2.0.0
+  #       with:
+  #         method: chat.postMessage
+  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
+  #         payload: |
+  #           channel: ${{ secrets.SLACK_CHANNEL_ID }}
+  #           text: "howdy <@channel>!"
