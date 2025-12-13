@@ -32,8 +32,9 @@ from sklearn.metrics import (
     classification_report,
     accuracy_score,
     f1_score,
-    ConfusionMatrixDisplay,
-    RocCurveDisplay
+    roc_auc_score,
+    roc_curve,
+    ConfusionMatrixDisplay
 )
 
 
@@ -160,6 +161,16 @@ if __name__ == "__main__":
     X = df.drop('is_fraud', axis=1)
     y = df['is_fraud']
 
+    # ====================================================================
+    # STEP 2: Train/Test Split and Preprocessing Pipelines
+    # ====================================================================
+
+    print(separator)
+    print("⚙️ Dataset Splitting FOR MODELING")
+    print(separator)
+    print()
+
+
     # Train / test split 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, 
         random_state=42, 
@@ -169,6 +180,9 @@ if __name__ == "__main__":
     X_train_processed = X_train.copy()
     X_test_processed = X_test.copy()
 
+    print("✅ Dataset split into training and testing sets.")
+
+    # Preprocessing pipelines for both numerical and categorical data
     one_hot_encoder = Pipeline(steps=[('OHE', OneHotEncoder(drop='first', handle_unknown='ignore'))])
     num_encoder = Pipeline(steps=[('numerical', StandardScaler())])
 
@@ -191,13 +205,14 @@ if __name__ == "__main__":
 
     pipelines = {
     "Random Forest": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', RandomForestClassifier())]),
-    #"Gradient Boosting": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', GradientBoostingClassifier())]),
-    "SVC": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', SVC())]),
+    "Gradient Boosting": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', GradientBoostingClassifier())]),
+    #"SVC": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', SVC())]),
     "Logistic Regression_100": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression(max_iter=100))]),
-    "Logistic Regression_1000": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression(max_iter=1000))])
+    #"Logistic Regression_10000": Pipeline(steps=[('preprocessor', preprocessor), ('classifier', LogisticRegression(max_iter=10000))])
     }
 
     modelsResults = {}
+    best_model_name = None
     
     for model_name, model in pipelines.items():
 
@@ -218,11 +233,24 @@ if __name__ == "__main__":
         y_train_pred = model.predict(X_train_processed)
         y_test_pred = model.predict(X_test_processed)
 
+        print("✅ Predictions made.")
+        print(f'Train predictions head: {y_train_pred[:5]}')
+        print(f'Test predictions head: {y_test_pred[:5]}')
+        print() 
+        print(separator)
         # Calculate metrics
         train_accuracy = accuracy_score(y_train, y_train_pred)
         test_accuracy = accuracy_score(y_test, y_test_pred)
         train_f1 = f1_score(y_train, y_train_pred)
         test_f1 = f1_score(y_test, y_test_pred)
+
+        # Calculate ROC AUC if model supports predict_proba
+        if hasattr(model, 'predict_proba'):
+            train_roc_auc = roc_auc_score(y_train, model.predict_proba(X_train_processed)[:, 1])
+            test_roc_auc = roc_auc_score(y_test, model.predict_proba(X_test_processed)[:, 1])
+        else:
+            train_roc_auc = None
+            test_roc_auc = None
 
 
         modelsResults[model_name] = {
@@ -231,6 +259,8 @@ if __name__ == "__main__":
             'test_accuracy': test_accuracy,
             'train_f1': train_f1,
             'test_f1': test_f1,
+            'train_roc_auc': train_roc_auc,
+            'test_roc_auc': test_roc_auc,
             'train_time': train_time,
             'y_train_pred': y_train_pred,
             'y_test_pred': y_test_pred
@@ -240,8 +270,15 @@ if __name__ == "__main__":
         print(f"⏱️ Training time: {train_time:.2f}s")
         print(f"✅ Train Accuracy: {train_accuracy:.4f}")
         print(f"✅ Test Accuracy: {test_accuracy:.4f}")
-        print(f"📈 Train F1: {train_f1:.4f}")
-        print(f"📈 Test F1: {test_f1:.4f}")
+        print(f"🔍 Train F1: {train_f1:.4f}")
+        print(f"🔍 Test F1: {test_f1:.4f}")
+        if train_roc_auc is not None:
+            print(f"📈 Train ROC AUC: {train_roc_auc:.4f}")
+            print(f"📈 Test ROC AUC: {test_roc_auc:.4f}")
+        else:
+            print(f"📈 ROC AUC: Non disponible (le modèle ne supporte pas predict_proba)")
+        
+
         
         print(separator)
         print(f"📊 Dashboard for {model_name}...")
@@ -254,62 +291,75 @@ if __name__ == "__main__":
         print(separator)
         print("✅ Model training complete!")
         print(separator)
-        
-        # ====================================================================
-        # STEP 5: Model Comparison
-        # ====================================================================
-        
-        print(separator)
-        print("🔍 MODEL COMPARISON")
-        print(separator)
-        print()
-        
-        # Create comparison dataframe
-        results_df = pd.DataFrame({
-            'Model': list(modelsResults.keys()),
-            'Train Accuracy': [r['train_accuracy'] for r in modelsResults.values()],
-            'Test Accuracy': [r['test_accuracy'] for r in modelsResults.values()],
-            'Train F1': [r['train_f1'] for r in modelsResults.values()],
-            'Test F1': [r['test_f1'] for r in modelsResults.values()],
-            'Time (s)': [r['train_time'] for r in modelsResults.values()]
-        })
 
-        # Sort by Test F1 Score
-        results_df = results_df.sort_values('Test F1', ascending=False)
-        print("Model Comparison Results:")
-        draw_model_comparison(results_df)
-        # ====================================================================
-        # STEP 6: Best Model Analysis
-        # ====================================================================
-        
-        print("\n" + separator)
-        print("BEST MODEL DETAILED ANALYSIS")
-        print(separator)
-        
-        best_model_name = results_df.iloc[0]['Model']
-        best_result = modelsResults[best_model_name]
-        
-        print(f"\n🏆 Best Model: {best_model_name}")
-        print(f"   Test F1 Score: {best_result['test_f1']:.4f}")
-        print(f"   Test Accuracy: {best_result['test_accuracy']:.4f}")
-        print()
-        
-        # ROC Curve for best model
+    # ====================================================================
+    # STEP 5: Model Comparison
+    # ====================================================================
+
+    print(separator)
+    print("🔍 MODEL COMPARISON")
+    print(separator)
+    print()
+
+    # Create comparison dataframe
+    results_df = pd.DataFrame({
+        'Model': list(modelsResults.keys()),
+        'Train Accuracy': [r['train_accuracy'] for r in modelsResults.values()],
+        'Test Accuracy': [r['test_accuracy'] for r in modelsResults.values()],
+        'Train F1': [r['train_f1'] for r in modelsResults.values()],
+        'Test F1': [r['test_f1'] for r in modelsResults.values()],
+        'Train ROC AUC': [r['train_roc_auc'] if r['train_roc_auc'] is not None else 0 for r in modelsResults.values()],
+        'Test ROC AUC': [r['test_roc_auc'] if r['test_roc_auc'] is not None else 0 for r in modelsResults.values()],
+        'Time (s)': [r['train_time'] for r in modelsResults.values()]
+    })
+
+    # Sort by Test F1 Score
+    results_df = results_df.sort_values('Test F1', ascending=False)
+    print("Model Comparison Results:")
+    draw_model_comparison(results_df)
+
+    # ====================================================================
+    # STEP 6: Best Model Analysis
+    # ====================================================================
+
+    print("\n" + separator)
+    print("BEST MODEL DETAILED ANALYSIS")
+    print(separator)
+
+    best_model_name = results_df.iloc[0]['Model']
+    best_result = modelsResults[best_model_name]
+    
+    print(f"\n🏆 Best Model: {best_model_name}")
+    print(f"   Test F1 Score: {best_result['test_f1']:.4f}")
+    print(f"   Test Accuracy: {best_result['test_accuracy']:.4f}")
+    print()
+
+    # Classification Report
+    print("\nClassification Report (Test Set):")
+    print(separator)
+    print(classification_report(y_test, best_result['y_test_pred'],
+                            target_names=['Non-Fraud', 'Fraud']))
+
+    # ROC Curve for best model
+    if best_result['test_roc_auc'] is not None:
+        print("\nGenerating ROC Curve for best model...")
         fig, ax = plt.subplots(figsize=(10, 8))
-        RocCurveDisplay.from_estimator(
-            best_result['model'], 
-            X_test_processed, 
-            y_test, 
-            ax=ax, 
-            color=jedhaColor_violet,
-            lw=3
-        )
+
+        # Calculate ROC curve
+        fpr, tpr, _ = roc_curve(y_test, best_result['model'].predict_proba(X_test_processed)[:, 1])
+
+        ax.plot(fpr, tpr, color=jedhaColor_violet, lw=3,
+                label=f'ROC curve (AUC = {best_result["test_roc_auc"]:.4f})')
+        ax.plot([0, 1], [0, 1], color=jedhaColor_black, lw=2, linestyle='--', alpha=0.5)
+
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([0.0, 1.05])
+        ax.set_xlabel('False Positive Rate', fontweight='bold', color=jedhaColor_black)
+        ax.set_ylabel('True Positive Rate', fontweight='bold', color=jedhaColor_black)
+        ax.set_title(f"ROC Curve - {best_model_name} (Test Set)",
+                    fontsize=14, fontweight='bold', color=jedhaColor_black)
         ax.set_facecolor(jedha_bg_color)
         fig.patch.set_facecolor(jedha_bg_color)
-        ax.set_title(f"ROC Curve - {best_model_name} (Test Set)", 
-                    fontsize=14, fontweight='bold', color=jedhaColor_black)
-        ax.xaxis.label.set_color(jedhaColor_black)
-        ax.yaxis.label.set_color(jedhaColor_black)
         ax.tick_params(colors=jedhaColor_black)
         for spine in ax.spines.values():
             spine.set_color(jedhaColor_black)
@@ -318,44 +368,51 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.savefig(current_path + '/outputs/Results_roc_curve_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
         plt.close(fig)
-        
-        # Classification Report
-        print("\nClassification Report (Test Set):")
+        print("✅ ROC Curve saved.")
+
+    # Feature importance (if Random Forest)
+    if 'Random Forest' in best_model_name:
+        print("\nFeatures les plus importantes dans la creation du Random Forest:")
         print(separator)
-        print(classification_report(y_test, best_result['y_test_pred'], 
-                                target_names=['Non-Fraud', 'Fraud']))
-        
-        # Feature importance (if RandomForest)
-        if best_model_name == 'RandomForest':
-            print("\nFeatures les plus importantes dans la creation du Random Forest:")
-            print(separator)
-            
-            feature_importance = pd.DataFrame({
-                'feature': X_train_processed.columns,
-                'importance': best_result['model'].feature_importances_
-            }).sort_values('importance', ascending=False).head(10)
-            
-            print(feature_importance)
-            
-            # Visualize feature importance
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.barh(feature_importance['feature'], feature_importance['importance'], 
-                color=jedhaColor_violet, alpha=0.8)
-            ax.set_xlabel('Importance', fontweight='bold', color=jedhaColor_black)
-            ax.set_ylabel('Feature', fontweight='bold', color=jedhaColor_black)
-            ax.set_title('Features les plus importantes dans la creation du Random Forest', 
-                        fontweight='bold', color=jedhaColor_black)
-            ax.set_facecolor(jedha_bg_color)
-            fig.patch.set_facecolor(jedha_bg_color)
-            ax.tick_params(colors=jedhaColor_black)
-            ax.grid(True, alpha=0.3, color=jedhaColor_black, axis='x')
-            for spine in ax.spines.values():
-                spine.set_color(jedhaColor_black)
-            plt.gca().invert_yaxis()
-            plt.tight_layout()
-            plt.savefig(current_path + '/outputs/Results_feature_importance_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
-            plt.close(fig)
-            
+
+        # Get feature names after preprocessing
+        categorical_features = X_train.select_dtypes("object").columns.tolist()
+        numerical_features = X_train.columns[~X_train.columns.isin(categorical_features)].tolist()
+
+        # Get feature names from the pipeline
+        ohe_features = list(best_result['model'].named_steps['preprocessor']
+                           .named_transformers_['categorical']
+                           .named_steps['OHE']
+                           .get_feature_names_out(categorical_features))
+        all_features = ohe_features + numerical_features
+
+        feature_importance = pd.DataFrame({
+            'feature': all_features,
+            'importance': best_result['model'].named_steps['classifier'].feature_importances_
+        }).sort_values('importance', ascending=False).head(10)
+
+        print(feature_importance)
+
+        # Visualize feature importance
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(feature_importance['feature'], feature_importance['importance'],
+            color=jedhaColor_violet, alpha=0.8)
+        ax.set_xlabel('Importance', fontweight='bold', color=jedhaColor_black)
+        ax.set_ylabel('Feature', fontweight='bold', color=jedhaColor_black)
+        ax.set_title('Features les plus importantes dans la creation du Random Forest',
+                    fontweight='bold', color=jedhaColor_black)
+        ax.set_facecolor(jedha_bg_color)
+        fig.patch.set_facecolor(jedha_bg_color)
+        ax.tick_params(colors=jedhaColor_black)
+        ax.grid(True, alpha=0.3, color=jedhaColor_black, axis='x')
+        for spine in ax.spines.values():
+            spine.set_color(jedhaColor_black)
+        plt.gca().invert_yaxis()
+        plt.tight_layout()
+        plt.savefig(current_path + '/outputs/Results_feature_importance_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.pdf')
+        plt.close(fig)
+        print("✅ Feature importance saved.")
+
     print("\n✅ Model evaluation complete!")
     print(separator)
 

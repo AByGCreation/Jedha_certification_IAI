@@ -262,6 +262,7 @@ def draw_confusion_matrices(model_name, y_train, y_train_pred, y_test, y_test_pr
 
 
             # Visualize model comparison
+
 def draw_model_comparison(results_df):
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.patch.set_facecolor(jedha_bg_color)
@@ -308,25 +309,51 @@ def draw_model_comparison(results_df):
         spine.set_color(jedhaColor_black)
     
     # 3. Overfitting Detection (Accuracy Gap)
+    # ax = axes[1, 0]
+    # accuracy_gap = results_df['Train Accuracy'] - results_df['Test Accuracy']
+    # colors_gap = [jedhaColor_violet if gap > 0.05 else jedhaColor_blue for gap in accuracy_gap]
+    
+    # ax.bar(results_df['Model'], accuracy_gap, color=colors_gap, alpha=0.8)
+    # ax.axhline(y=0, color=jedhaColor_black, linestyle='-', linewidth=0.5)
+    # ax.axhline(y=0.01, color='red', linestyle='--', linewidth=1, alpha=0.5, label='Overfitting threshold')
+    
+    # ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+    # ax.set_ylabel('Train-Test Accuracy', fontweight='bold', color=jedhaColor_black)
+    # ax.set_title('Detection Overfitting ', fontweight='bold', color=jedhaColor_black)
+    # ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+    # ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+    # ax.set_facecolor(jedha_bg_color)
+    # ax.tick_params(colors=jedhaColor_black)
+    # ax.grid(True, alpha=0.3, color=jedhaColor_black)
+    # for spine in ax.spines.values():
+    #     spine.set_color(jedhaColor_black)
+    
+    # 3. ROC-AUC Comparison (Train vs Test)
     ax = axes[1, 0]
-    accuracy_gap = results_df['Train Accuracy'] - results_df['Test Accuracy']
-    colors_gap = [jedhaColor_violet if gap > 0.05 else jedhaColor_blue for gap in accuracy_gap]
-    
-    ax.bar(results_df['Model'], accuracy_gap, color=colors_gap, alpha=0.8)
-    ax.axhline(y=0, color=jedhaColor_black, linestyle='-', linewidth=0.5)
-    ax.axhline(y=0.05, color='red', linestyle='--', linewidth=1, alpha=0.5, label='Overfitting threshold')
-    
-    ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
-    ax.set_ylabel('Train-Test Accuracy', fontweight='bold', color=jedhaColor_black)
-    ax.set_title('Detection Overfitting ', fontweight='bold', color=jedhaColor_black)
-    ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
-    ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
-    ax.set_facecolor(jedha_bg_color)
-    ax.tick_params(colors=jedhaColor_black)
-    ax.grid(True, alpha=0.3, color=jedhaColor_black)
-    for spine in ax.spines.values():
-        spine.set_color(jedhaColor_black)
-    
+    if 'Train ROC AUC' in results_df.columns and 'Test ROC AUC' in results_df.columns:
+        ax.bar(x - width/2, results_df['Train ROC AUC'], width,
+            label='Train', color=jedhaColor_blue, alpha=0.8)
+        ax.bar(x + width/2, results_df['Test ROC AUC'], width,
+            label='Test', color=jedhaColor_violet, alpha=0.8)
+
+        ax.set_xlabel('Model', fontweight='bold', color=jedhaColor_black)
+        ax.set_ylabel('ROC AUC Score', fontweight='bold', color=jedhaColor_black)
+        ax.set_title('ROC AUC Comparison: Train vs Test', fontweight='bold', color=jedhaColor_black)
+        ax.set_xticks(x)
+        ax.set_xticklabels(results_df['Model'], rotation=15, ha='right')
+        ax.legend(facecolor=jedha_bg_color, edgecolor=jedhaColor_black)
+        ax.set_facecolor(jedha_bg_color)
+        ax.tick_params(colors=jedhaColor_black)
+        ax.grid(True, alpha=0.3, color=jedhaColor_black)
+        for spine in ax.spines.values():
+            spine.set_color(jedhaColor_black)
+    else:
+        ax.text(0.5, 0.5, 'ROC AUC data not available',
+                ha='center', va='center', fontsize=12, color=jedhaColor_black)
+        ax.set_facecolor(jedha_bg_color)
+        for spine in ax.spines.values():
+            spine.set_color(jedhaColor_black)
+
     # 4. Training Time Comparison
     ax = axes[1, 1]
     ax.bar(results_df['Model'], results_df['Time (s)'], color=jedhaColor_blue, alpha=0.8)
