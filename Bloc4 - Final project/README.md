@@ -3,6 +3,7 @@
 [![RNCP](https://img.shields.io/badge/RNCP-38777-blue)](https://www.francecompetences.fr/recherche/rncp/38777/)
 [![Niveau](<https://img.shields.io/badge/Niveau-7_(BAC+5)-green>)](https://www.francecompetences.fr/recherche/rncp/38777/)
 [![Statut](https://img.shields.io/badge/Statut-En_cours-orange)]()
+
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?logo=github-actions&logoColor=white)]()
 [![Tests](https://img.shields.io/badge/Tests-pytest-0A9EDC?logo=pytest&logoColor=white)]()
 [![Monitoring](https://img.shields.io/badge/Monitoring-Apitally-FF6B6B)]()
@@ -23,13 +24,17 @@
 
 Opérationnaliser le système de détection de fraude bancaire avec une **approche industrielle** :
 
+**Stack technologique :**
+Schema global du Pipeline
+
+![pipeline](Dossier/assets/pipeline.png)
+
 ### Contenu
 
 - ✅ **Tests automatisés multi-niveaux** (unit, integration, smoke)
-- ✅ **CI/CD avec 3 gates de validation** qualité
-- ✅ **Monitoring temps réel** des performances (latence, précision, erreurs)
+- ✅ **CI/CD avec 2 gates de validation** qualité
+- 🟦 **Monitoring temps réel** de la qulité et des performances (en cours)
 - ✅ **Traçabilité complète** des déploiements et décisions
-- ✅ **Stratégie de rollback** rapide en cas d'incident
 
 ### Ressources
 
