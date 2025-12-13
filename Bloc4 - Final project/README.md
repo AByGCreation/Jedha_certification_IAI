@@ -36,6 +36,21 @@ Schema global du Pipeline
 - 🟦 **Monitoring temps réel** de la qulité et des performances (en cours)
 - ✅ **Traçabilité complète** des déploiements et décisions
 
+#### Infrastructure déployée
+
+**Services en production :**
+
+| Service   | URL                                           | Description               |
+| --------- | --------------------------------------------- | ------------------------- |
+| Streamlit | https://davidrambeau-bloc3-streamlit.hf.space | Suivi des logs      |
+| FastAPI   | https://davidrambeau-bloc3-fastapi.hf.space   | API de scoring            |
+| MLflow    | https://davidrambeau-bloc3-mlflow.hf.space    | Tracking & model registry |
+| Flask     | https://davidrambeau-bloc3-flask.hf.space     | Interface utilisateur     |
+
+**Stockage externe :**
+
+- **NeonDB** : PostgreSQL serverless (suivi des logs qualité)
+
 ### Ressources
 
 Les ressources et exercices pratiques sont organisés dans les dossiers de ce bloc.
