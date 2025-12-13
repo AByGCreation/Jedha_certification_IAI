@@ -27,7 +27,7 @@ Opérationnaliser le système de détection de fraude bancaire avec une **approc
 **Stack technologique :**
 Schema global du Pipeline
 
-![pipeline](Dossier/assets/pipeline.png)
+![pipeline](Dossier/assets/pipeline.pdf)
 
 ### Contenu
 
