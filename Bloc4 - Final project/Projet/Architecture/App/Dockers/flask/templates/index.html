@@ -3,17 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- <link rel="stylesheet" href="style.css"> -->
     <title>Bloc 3 - Transaction Simulator</title>
     <style>
-       
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  /*background: linear-gradient(135deg, #DFF4F5 0%, #89C2FF 100%);*/
+  background: #dff4f5;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  background: #170035;
+  color: white;
+  padding: 30px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  color: #3ae5ff;
+  font-size: 1.2em;
+}
+
+.controls {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.button-group {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 15px 30px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: bold;
+}
+
+.btn-primary {
+  background: #8409ff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #6b07cc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(132, 9, 255, 0.3);
+}
+
+.btn-danger {
+  background: #ff4136;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #cc342b;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: #3ae5ff;
+  color: #170035;
+}
+
+.btn-secondary:hover {
+  background: #2bc4db;
+}
+
+.result-container {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: none;
+}
+
+.result-container.show {
+  display: block;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.transaction-card {
+  border-left: 5px solid #8409ff;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.fraud-detected {
+  border-left-color: #ff4136;
+  background: #ffe6e6;
+}
+
+.fraud-safe {
+  border-left-color: #2ecc40;
+  background: #e6ffe6;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: bold;
+  color: #170035;
+}
+
+.value {
+  color: #666;
+}
+
+.fraud-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.badge-fraud {
+  background: #ff4136;
+  color: white;
+}
+
+.badge-safe {
+  background: #2ecc40;
+  color: white;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2em;
+  color: #8409ff;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2em;
+  font-weight: bold;
+  color: #8409ff;
+}
+
+.stat-label {
+  color: #666;
+  margin-top: 5px;
+}
+
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <div style="display: flex; align-items: center; gap: 20px;">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="height: 60px;">
+                <img src="https://www.labanquepostale.com/content/dam/lbp/iconographie/assets-specifiques/logos-group/lbp/light/vignette-logo-lbp.png" alt="Logo" style="height: 60px;">
                 <h1>LBP Simulateur de transaction</h1>
             </div>
             <p class="subtitle">Détection de fraude temps-réel avec MLFlow</p>
@@ -28,13 +232,13 @@
                 <!-- <button class="btn-danger" onclick="simulateTransaction(true)">
                     🚨 Simuler une transaction frauduleuse
                 </button> -->
-                <button class="btn-primary" onclick="simulateBatch()" id="loopTransaction">
+                <button class="btn-primary" onclick="toggleLoop()" id="loopTransaction">
                     📊 Simuler des transactions en continu
                 </button>
             </div>
         </div>
 
-        <div id="loading" class="loading" style="display: none; "></div>
+        <div id="loading" class="loading" style="display: none; ">
             ⏳ Transaction en cours d'analyse...
         </div>
 
@@ -105,7 +309,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="label">Date:</span>
-                            <span class="value">${data.transaction.date}</span>
+                            <span class="value">${new Date(parseInt(data.transaction.date)).toLocaleDateString('fr-FR')}</span>
                         </div>
                         <div class="detail-row">
                             <span class="label">Sauvegardé:</span>
@@ -123,6 +327,9 @@
             showLoading();
 
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
+                
                 const response = await fetch('/simulate', {
                     method: 'POST',
                     headers: {
@@ -130,8 +337,10 @@
                     },
                     body: JSON.stringify({
                         force_fraud: forceFraud
-                    })
+                    }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
                 const data = await response.json();
                 hideLoading();
@@ -244,6 +453,9 @@
         async function runBatch() {
             showLoading();
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 80000); // 80 seconds timeout
+                
                 const response = await fetch('/simulate', {
                     method: 'POST',
                     headers: {
@@ -252,8 +464,10 @@
                     body: JSON.stringify({
                         count: 1,
                         fraud_rate: 0
-                    })
+                    }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
                 const data = await response.json();
                 hideLoading();
                 displayResult(data);

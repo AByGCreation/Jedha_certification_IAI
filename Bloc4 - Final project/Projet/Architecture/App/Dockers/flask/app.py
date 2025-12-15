@@ -126,7 +126,7 @@ def getMLFlowLastModel():
 def getTransactionFromAPI(API_URL=simulationAPI_URL, s3_client=s3_client, bucket_name=bucket_name):
     """Get transaction from API and return as flat dict"""
     
-    r = requests.get(API_URL)
+    r = requests.get(API_URL, timeout=30)
 
     if r.status_code == 200:
         # Double parsing car l'API encode 2 fois
@@ -183,7 +183,7 @@ def predict_fraud(transaction_dict):
             api_url,
             json=transaction_dict,  # ✅ Déjà au bon format
             headers={'accept': 'application/json'},
-            timeout=10
+            timeout=30
         )
         
         if response.status_code == 200:
