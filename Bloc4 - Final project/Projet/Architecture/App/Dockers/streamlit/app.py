@@ -38,8 +38,14 @@ df_recent = pd.read_sql("""
 """, engine)
 
 col1.metric("Total Tests (24h)", df_recent['total'].iloc[0])
-col2.metric("Taux Réussite", f"{df_recent['passed'].iloc[0] / df_recent['total'].iloc[0] * 100:.1f}%")
-col3.metric("Durée Moyenne", f"{df_recent['avg_duration'].iloc[0]:.0f}ms")
+
+passed = df_recent['passed'].iloc[0]
+total = df_recent['total'].iloc[0]
+success_rate = (passed / total * 100) if total > 0 else 0
+col2.metric("Taux Réussite", f"{success_rate:.1f}%")
+
+avg_duration = df_recent['avg_duration'].iloc[0] or 0
+col3.metric("Durée Moyenne", f"{avg_duration:.0f}ms")
 
 # Graphique évolution accuracy
 df_accuracy = pd.read_sql("""
